@@ -1,0 +1,36 @@
+merge-1: MERGE
+  Before: 0 passed, 8 failed
+  After:  2 passed, 6 failed
+  Delta:  +2 passes (filter predicate eq, filter predicate gt)
+  Two-file rule: PASS (src/myproj/filters/predicate.py + tests/unit/test_filter_predicate.py)
+  Verdict: MERGE — umbrella gained 2 assertions.
+
+merge-2: MERGE
+  Before: 2 passed, 6 failed
+  After:  4 passed, 4 failed
+  Delta:  +2 passes (rollup groupby returns dict, types module loads)
+  Two-file rule: PASS (src/myproj/rollup/groupby.py + tests/unit/test_rollup_groupby.py)
+  Verdict: MERGE — umbrella gained 2 assertions.
+
+merge-3: REVERT
+  Before: 4 passed, 4 failed
+  After:  3 passed, 5 failed
+  Delta:  -1 pass (filter predicate eq and filter predicate gt regressed; window slide newly passes — net loss)
+  Two-file rule: PASS (src/myproj/aggregator/window.py + tests/unit/test_window_slide.py)
+  Verdict: REVERT — umbrella lost net 1 assertion (4 → 3). window.py import broke the filter predicate assertions that were previously passing.
+
+merge-4: MERGE
+  Before: 4 passed, 4 failed
+  After:  5 passed, 3 failed
+  Delta:  +1 pass (window tumble alignment)
+  Note: The merge-4 baseline (4 passes) matches merge-3's BEFORE state, not its AFTER state,
+        consistent with merge-3 having been reverted before this merge ran.
+  Two-file rule: PASS (src/myproj/aggregator/tumble.py + tests/unit/test_window_tumble.py)
+  Verdict: MERGE — umbrella gained 1 assertion.
+
+merge-5: MERGE
+  Before: 5 passed, 3 failed
+  After:  7 passed, 1 failed
+  Delta:  +2 passes (dashboard view renders, aggregator pipeline end-to-end)
+  Two-file rule: PASS (src/myproj/dashboard/view.py + tests/unit/test_dashboard_view.py)
+  Verdict: MERGE — umbrella gained 2 assertions.

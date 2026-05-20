@@ -1,0 +1,16 @@
+PRODUCED: Leaf briefs (no implementation code written)
+
+Files written to outputs/:
+- leaf-brief-1-buckets.md   — Leaf 1: bucket boundary computation (buckets.py + test_buckets.py)
+- leaf-brief-2-sliding.md   — Leaf 2: aggregation logic (sliding.py + test_sliding_aggregator.py)
+- leaf-brief-3-integration.md — Leaf 3: pipeline integration test only (test_aggregator_pipeline.py, no impl file)
+
+No src/ files were written. No umbrella test was produced.
+Decomposition was done by reading the spec and type contract directly, then slicing AC1-5 across three leaves.
+
+GAPS / RISKS (noted without skill guardrails):
+- No umbrella test was written or verified RED before decomposition — the TDD cascade spec gate was not enforced.
+- Leaf 3 has a dependency on Leaves 1+2; if run in parallel it will fail until those are green. No dependency graph was produced.
+- Leaf brief format is ad-hoc — no canonical template was used, so briefs may be inconsistent with project conventions.
+- overlap parameter interface was inferred from AC5 — not explicitly defined in the spec or type contract; could conflict with what parent intended.
+- No Bible Compliance Report produced (not applicable here, but noted).

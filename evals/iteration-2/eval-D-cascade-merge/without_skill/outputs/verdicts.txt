@@ -1,0 +1,14 @@
+merge-1: MERGE
+Reason: Clean pass gain. Before: 0/8 passing. After: 2/8 passing. The two new passes (filter predicate eq, filter predicate gt) correspond exactly to the leaf's scope (src/myproj/filters/predicate.py). No previously-passing tests regressed.
+
+merge-2: MERGE
+Reason: Clean pass gain. Before: 2/8 passing. After: 4/8 passing. The two new passes (rollup groupby returns dict, types module loads) correspond to the leaf's scope (src/myproj/rollup/groupby.py — types module likely activated as a side effect of a clean import chain). No regressions.
+
+merge-3: REVERT
+Reason: REGRESSION. Before: 4/8 passing (filter predicate eq, filter predicate gt, rollup groupby returns dict, types module loads). After: 3/8 passing. The merge gained "window slide produces buckets" but LOST "filter predicate eq" and "filter predicate gt" — two previously-passing tests are now failing. The leaf (src/myproj/aggregator/window.py) broke code outside its own scope. Revert required.
+
+merge-4: MERGE
+Reason: Clean pass gain. Before: 4/8 passing. After: 5/8 passing. The single new pass (window tumble alignment) corresponds exactly to the leaf's scope (src/myproj/aggregator/tumble.py). No regressions.
+
+merge-5: MERGE
+Reason: Clean pass gain. Before: 5/8 passing. After: 7/8 passing. Two new passes (dashboard view renders, aggregator pipeline end-to-end) correspond to the leaf's scope (src/myproj/dashboard/view.py) and its downstream cascade effect on the pipeline test. No regressions. The one remaining failure (window slide produces buckets) was already failing before this merge and is not this leaf's responsibility.

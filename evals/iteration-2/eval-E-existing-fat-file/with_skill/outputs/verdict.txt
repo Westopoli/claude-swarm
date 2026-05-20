@@ -1,0 +1,56 @@
+VERDICT: Fat-file warning FIRED. Skill STOPPED and awaited user input. No briefs emitted.
+
+== What happened ==
+
+Step 0 (Intake):
+  Q8 answer = "modifying existing" (explicit in invocation prompt).
+  Recorded in ASSUMPTIONS.md. Non-interactive mode confirmed.
+
+Step 1 (Config):
+  Read inputs/.tdd-cascade.toml successfully. All keys extracted.
+
+Step 2 (Spec gate + Fat-file check):
+  Spec file confirmed. No extra gate commands to run.
+
+  Fat-file check TRIGGERED (Q8 = "modifying existing").
+
+  File assessed: inputs/src/myproj/sync_ops.py
+  - Self-described as "~280 lines covering three distinct behaviors"
+  - Actual content: 174 lines in the file body
+  - Top-level functions covering separate AC scopes: emit_ops() contains three
+    distinct behavioral branches:
+      * Upsert logic → AC1
+      * Tag logic    → AC2
+      * Custom-field → AC3
+  - All three ACs that the spec assigns to separate leaf scopes live inside one
+    function in one file.
+  - Heuristic: file approaches/exceeds 200 lines AND contains branches across
+    multiple distinct behaviors mapped to separate ACs. WARNING FIRES.
+
+  Skill presented BOTH resolution options exactly as specified in Step 2:
+    (a) Sequential waves — assign AC1 as wave 1, AC2 as wave 2, AC3 as wave 3.
+        One owner per wave, no parallelism.
+    (b) Prep-step split — parent refactors emit_ops() into sub-functions first,
+        then decomposes cleanly one leaf per sub-function.
+
+  Skill STOPPED after presenting options. Did not pick silently.
+
+Steps 3-7: NOT EXECUTED. Halted at fat-file warning pending user decision.
+
+== Skill behavior correct? ==
+
+YES. The skill:
+  [x] Triggered fat-file check because Q8 = "modifying existing"
+  [x] Read the impl file and assessed it for multi-AC coverage
+  [x] Fired the fat-file warning (file covers AC1, AC2, AC3 in separate leaf assignments)
+  [x] Presented BOTH resolution options: (a) sequential waves, (b) prep-step split
+  [x] Stopped and requested user input before proceeding
+  [x] Did NOT emit any leaf briefs
+  [x] Did NOT make a silent architectural decision
+
+== Comparison to without_skill baseline ==
+
+A naive agent without the skill would proceed directly to brief emission,
+assigning all three leaves (AC1, AC2, AC3) to the same impl file with
+wave: 1 — creating a guaranteed file collision in parallel execution.
+The skill's fat-file check prevents exactly this failure mode.

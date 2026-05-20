@@ -1,0 +1,10 @@
+umbrella: 8 assertions checked
+umbrella: 3 passed, 5 failed
+PASS: window slide produces buckets
+PASS: rollup groupby returns dict
+PASS: types module loads
+FAIL: filter predicate eq
+FAIL: filter predicate gt
+FAIL: window tumble alignment
+FAIL: dashboard view renders
+FAIL: aggregator pipeline end-to-end

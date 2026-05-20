@@ -1,0 +1,18 @@
+[project]
+name = "eval-E-fixture"
+
+[paths]
+spec_dir = "specs"
+briefs_dir = "briefs"
+type_contract_path = "src/myproj/types.py"
+umbrella_test_cmd = "python -m pytest tests/test_umbrella.py -v"
+
+[invariants]
+max_impl_lines = 200
+max_test_assertions = 20
+parent_owned_globs = [
+  "src/myproj/types.py",
+  "tests/test_umbrella.py",
+  "tests/conftest.py",
+]
+ambiguous_verbs = ["decide", "choose", "design", "determine", "figure out", "pick", "resolve", "as appropriate"]

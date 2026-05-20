@@ -1,0 +1,24 @@
+FAIL — 3 briefs fail (leaf-07, leaf-09, leaf-12). Restructure and re-emit via /tdd-root, then re-run /tdd-review. Do not spawn any leaf until this reports PASS.
+
+--- FINDINGS ---
+
+[leaf-07] non-overlap
+  impl_file: src/myproj/aggregator/window.py
+  Reason: Also claimed by leaf-12. Both leaves are in wave 2. Parallel execution would cause a write collision on merge.
+
+[leaf-12] non-overlap
+  impl_file: src/myproj/aggregator/window.py
+  Reason: Also claimed by leaf-07. Both leaves are in wave 2. Parallel execution would cause a write collision on merge.
+
+[leaf-09] no-design
+  contract_imports: [CachePolicy, ResultRow]
+  Reason: "CachePolicy" is not defined in the locked type contract at src/myproj/types.py. The contract defines: AggregatedRow, WindowSpec, RollupKey, DashboardView, FilterPredicate, MetricDef, TimeRange, BucketSize, ResultRow, ErrorReport. Leaf-09 is being asked to import a type that does not exist — it would have to invent or design it, violating the no-design invariant.
+
+--- PASSING BRIEFS ---
+
+leaf-01, leaf-02, leaf-03, leaf-04, leaf-05, leaf-06, leaf-08, leaf-10, leaf-11, leaf-13, leaf-14, leaf-15 (12 of 15 pass)
+
+--- INVARIANT 3 NOTE ---
+
+All sizing budgets are within limits (max_impl_lines=200, max_test_assertions=20).
+Highest impl_line_budget observed: 90 (leaf-07). Highest test_assertion_budget observed: 8 (leaf-07).
