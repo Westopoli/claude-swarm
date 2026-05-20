@@ -1,2 +1,0 @@
-src/myproj/filters/predicate.py
-tests/unit/test_filter_predicate.py

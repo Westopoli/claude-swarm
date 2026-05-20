@@ -1,4 +1,0 @@
-eval-A: FLAGGED (2) — leaf-09 CachePolicy fabricated type; leaf-07/leaf-12 cross-leaf impl_file collision on window.py (wave 2)
-eval-B: FLAGGED (1) — bucket_id label format compounded across leaves; leaf-02 depends on leaf-01 inference with no spec anchor
-eval-C: FLAGGED (1) — out_of_scope assumption entry misleading as gate-pass signal; halt was correct but log entry needs void annotation
-eval-D: CLEAN — all 5 merge assumptions accurate and verifiable; merge-3 revert inference confirmed by chain data

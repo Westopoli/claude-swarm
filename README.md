@@ -1,125 +1,126 @@
 # claude-swarm
 
-> Disciplined parallel-agent TDD for Claude Code. One umbrella test, many leaves, zero drift.
+> Disciplined parallel-agent TDD for Claude Code. One north-star test, many sub-tasks, zero drift.
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-skill-D97757)
 ![Status](https://img.shields.io/badge/status-v0.1-green)
 
-[Why TDD + AI](#why-tdd-is-the-right-discipline-for-ai-agents) • [The north star test](#the-north-star-test) • [Before / After](#before--after) • [Benchmarks](#benchmarks) • [Install](#install) • [What you get](#what-you-get) • [Evidence](#evidence)
+[Why TDD + AI](#why-tdd-for-ai-agents) • [Before / After](#before--after) • [Benchmarks](#benchmarks) • [What you get](#what-you-get) • [How it works](#how-it-works) • [Install](#install) • [Config](#config)
 
-A Claude Code skill pack that turns a locked spec into a set of **parallel sub-agent tasks** without the usual failure modes: overlapping file edits, silent design decisions, oversized leaves, regressions slipping past merge.
+A Claude Code skill pack that lets you run many AI sub-agents in parallel without the usual failure modes: overlapping file edits, silent design decisions, oversized tasks, regressions slipping past merge.
 
-Three slash commands. Three safety nets. One cascade.
+Three slash commands. Three safety nets.
 
 | Command | What it does |
 |---|---|
-| `/swarm` | Bootstrap a sprint: spec gate → type contract → umbrella RED → emit leaf briefs |
-| `/swarm-review` | Audit briefs against three invariants (non-overlap, no design leak, sizing) before any agent spawns |
-| `/swarm-merge` | Post-leaf merge protocol: verify the 2-file diff, rerun the umbrella, revert on regression |
+| `/swarm` | Plans the work: reads your requirements, writes a single failing test that defines "done", emits one task description per sub-agent. |
+| `/swarm-review` | Audits the task descriptions before any sub-agent starts. Blocks if two would edit the same file, if any task contains ambiguous design language, or if a task is oversized. |
+| `/swarm-merge` | Lands each sub-agent's work safely. Verifies the diff is exactly two files, reruns the "done" test, reverts if anything regresses. |
 
 ---
 
-## Why TDD is the right discipline for AI agents
+## Why TDD for AI agents
 
-Three failure modes dominate AI-agent dev work:
+AI agents fail in three predictable ways:
 
-1. **Spec ambiguity → silent design.** An underspecified task lets the agent "decide" how something should work. The choice never surfaces in review — it just becomes code. At scale, half your codebase is undocumented agent design choices.
-2. **No machine-checkable signal of "done".** Agents will declare victory at the first plausible-looking output. Without an executable contract, you find out it wasn't done during integration. Or in prod.
-3. **Parallel agents amplify both.** Five agents drifting in five directions, each one "done", none of them composing.
+1. **Silent design.** Underspecified tasks let the agent "decide" how something should work. The choice never surfaces — it just becomes code.
+2. **Vibes-pass "done".** Agents declare victory at the first plausible-looking output. You find out it wasn't done in integration. Or in prod.
+3. **Parallel agents amplify both.** Five agents drifting in five directions, each "done", none of them composing.
 
-**TDD fixes the root cause.** A failing test is an executable spec the agent cannot bullshit its way past:
+A failing test fixes the root cause. The API is pinned before any code runs — no room to invent a different shape. "Done" becomes a binary, machine-checkable signal. Regressions get loud instead of staying silent. TDD has been the right discipline for 20 years; it's *especially* the right discipline for AI agents, because silent design drift is the failure mode autoregressive models are most prone to.
 
-- The API surface is pinned before any code is written. No room for the agent to invent a different shape.
-- "Done" is a green test, not a vibes-pass. The signal is binary, machine-checked, and loud when wrong.
-- Refactor stays safe — the same test that defined the contract catches regressions.
+## The north-star test
 
-This isn't a discovery. TDD has been the right discipline for 20 years. It's *especially* the right discipline for AI agents, because the failure mode TDD prevents — silent design drift — is exactly the failure mode autoregressive LLMs are most prone to.
-
-## The north star test
-
-In `claude-swarm`, every sprint starts with **one umbrella test**: a single failing test that encodes the acceptance criteria for the entire sprint. This is the **north star**.
+Every sprint starts with **one failing test** that defines what "done" looks like for the entire batch of work. We call it the **umbrella test** — it's the north star every sub-agent moves toward.
 
 ```
-                                       umbrella test (RED)
-                                              │
-                       ┌──────────────────────┼──────────────────────┐
-                       ▼                      ▼                      ▼
-                   leaf-01                leaf-02                leaf-03
-              (one test + one impl)  (one test + one impl)  (one test + one impl)
-                       │                      │                      │
-                       └──────────────────────┼──────────────────────┘
-                                              ▼
-                                       umbrella test (GREEN)
-                                              │
-                                          sprint done
+                                umbrella test (failing)
+                                          │
+                   ┌──────────────────────┼──────────────────────┐
+                   ▼                      ▼                      ▼
+               sub-task 1             sub-task 2             sub-task 3
+          (one test + one impl)  (one test + one impl)  (one test + one impl)
+                   │                      │                      │
+                   └──────────────────────┼──────────────────────┘
+                                          ▼
+                                umbrella test (passing)
+                                          │
+                                      sprint done
 ```
 
-Every leaf is a sub-agent task with **one test file + one impl file**. The leaf is green when its own test passes. The sprint is done when the umbrella test is green. The umbrella is the single source of truth for *done*. No green umbrella, no merge.
-
-The leaves are not "the work" — they're a decomposition of the work *toward the north star*. If a leaf's green doesn't move the umbrella closer to green, the decomposition was wrong, and `/swarm-review` catches it.
+Each sub-task is one test file + one impl file. The sub-task is done when its own test passes. The sprint is done when the umbrella test passes. No passing umbrella, no merge.
 
 ## Before / After
 
-### Without claude-swarm — five parallel agents, ad-hoc
+### Without claude-swarm
 
 ```
-spec.md  ──►  "spawn 5 agents on this"
-                              │
-                              ▼
-      ┌──── Agent A ──── edits auth.py
-      ├──── Agent B ──── also edits auth.py    ← collision, last-write wins
-      ├──── Agent C ──── "decides" JWT         ← spec said sessions, silent drift
-      ├──── Agent D ──── brief covers 3 ACs    ← runs out of context at AC2
-      └──── Agent E ──── done!                 ← umbrella still RED, nobody notices
+"spawn 5 agents on this"
+        │
+        ▼
+   Agent A ──── edits auth.py
+   Agent B ──── also edits auth.py    ← collision, last write wins
+   Agent C ──── invents JWT           ← requirements said sessions, silent drift
+   Agent D ──── task too big          ← ran out of context, half-stubbed
+   Agent E ──── "done!"               ← integration test still failing, nobody noticed
 ```
 
 ### With claude-swarm
 
 ```
-spec.md  ──►  /swarm  ──►  briefs/leaf-01.md … leaf-NN.md   (umbrella RED locked in)
-                              │
-                              ▼
-                         /swarm-review  ──►  PASS / FAIL
-                              │ (only on PASS)
-                              ▼
-                   spawn leaf agents in parallel
-                              │
-                              ▼
-                  for each green leaf: /swarm-merge
-                              │
-                              ▼
-                       umbrella GREEN → sprint done
+   /swarm  ──►  sub-task descriptions      (umbrella test failing, locked in)
+                  │
+                  ▼
+             /swarm-review  ──►  PASS / FAIL
+                  │ (only on PASS)
+                  ▼
+       spawn sub-agents in parallel
+                  │
+                  ▼
+       for each green sub-task: /swarm-merge
+                  │
+                  ▼
+            umbrella test passes → sprint done
 ```
-
-`/swarm-review` blocks overlapping file ownership. Briefs forbid design verbs (`decide`, `figure out`). Brief budgets hard-cap line counts so leaves can't get oversized. `/swarm-merge` verifies a 2-file diff and reverts on umbrella regression.
 
 ## Benchmarks
 
-We ran five paired evals (one with `claude-swarm`, one without) targeting each of the cascade's claimed safety properties. Methodology and rubric: [skills/swarm-shared/references/evaluation-rubric.md](skills/swarm-shared/references/evaluation-rubric.md). Raw verdicts and transcripts: [evals/iteration-2/](evals/iteration-2/).
+Five paired evals (one with `claude-swarm`, one without), each targeting a specific failure mode. Graded on **mistake prevention**, not pass-rate, tokens, or wall-clock. Methodology: [skills/swarm-shared/references/evaluation-rubric.md](skills/swarm-shared/references/evaluation-rubric.md).
 
-We **do not** grade on pass-rate, tokens, or wall-clock. We grade on **mistake prevention** and **plan fidelity at scale** — because that's what fails first in parallel-agent work.
+| Eval | Failure mode tested | Without skill | With skill |
+|---|---|---|---|
+| **A** | Fault detection at 15-way fan-out | Both produced output | Caught 2 silent drifts |
+| **B** | Skipping the failing-test gate | **Failed silently** | **Blocked correctly** |
+| **C** | Requirements vs strategy contradiction | Both halted | Skill kept an audit trail |
+| **D** | Silent regression across 5 merges | Both correct | Skill kept a reviewable record |
+| **E** | Two sub-tasks targeting same fat file | **Failed silently** | **Blocked correctly** |
 
-| Eval | What it tests | Without skill | With skill | Outcome |
-|---|---|---|---|---|
-| **A** — scale, 15 leaves | Fault detection at high fan-out | Both produced output | Skill flagged 2 drifts via assumption-sweep | Skill caught more mistakes |
-| **B** — solo-impl prevention | Umbrella-RED gate enforcement | **FAILED** — skipped umbrella gate, emitted briefs anyway | **BLOCKED** — refused to proceed with green umbrella | Skill prevented silent solo-impl |
-| **C** — bible drift | Spec-vs-strategy contradiction halt | Both halted correctly | Skill logged void-annotated assumption; baseline did not | Skill provided audit trail |
-| **D** — 5-merge cascade | Silent regression detection | Both correct | Skill's assumption logs surfaced merge-3 revert pattern | Skill produced reviewable record |
-| **E** — existing fat file | Resolution-path presentation | **FAILED** — emitted overlapping briefs on shared file | **BLOCKED** — presented sequential-waves vs prep-split paths | Skill prevented file-ownership collision |
+- **5/5 evals**: correct verdict with the skill.
+- **2/5 evals (B, E)**: baseline silently failed a safety property; skill blocked.
+- **4/18 inferred assumptions** flagged across all skill runs — drifts the baseline missed entirely.
+- **0 false positives** on `/swarm-review` audit verdicts.
 
-### Headline numbers
+The load-bearing evals are B and E: real time gets lost when those gates get skipped in production work. The skill blocked both. That's the value.
 
-- **5 / 5 evals**: `claude-swarm` produced the correct verdict.
-- **2 / 5 evals (B, E)**: the baseline silently *failed* a safety property; the skill **blocked** correctly.
-- **4 / 18 inferred assumptions** were flagged by the parent assumption-sweep across all `with_skill` runs — drifts the baseline missed entirely.
-- **0 false positives** on `/swarm-review` audit verdicts across the five eval runs.
+## What you get
 
-### What the numbers mean
+| Skill | What |
+|---|---|
+| `/swarm` | Plans the sprint: short intake interview, runs your project's gate commands, writes the failing umbrella test, emits one task description per sub-agent. |
+| `/swarm-review` | Runs a deterministic audit script. Blocks if any two tasks edit the same file, if any task contains ambiguous design verbs (`decide`, `figure out`, …), or if any task exceeds the size budget. |
+| `/swarm-merge` | Lands each sub-agent's work. Diff must be exactly two files. Reruns the umbrella test. Reverts the merge if the umbrella regresses. |
+| `check_invariants.py` | Standalone audit script — runnable in CI without Claude Code. |
+| `playbook.md` | The full theory: why each invariant exists, what failure mode it prevents. |
 
-Two of the five evals (B and E) are the **load-bearing** ones — they target the failure modes that cost real time when they slip past in production work (skipping the umbrella-RED gate; assigning two leaves to the same fat file). The baseline AI agent skipped these gates and proceeded. `claude-swarm` blocked correctly in both cases. **That is the entire value proposition** — at scale, those two skipped gates are how an afternoon turns into a week.
+## How it works
 
-The other three evals (A, C, D) measure the second-order benefit: even when the baseline reaches the right verdict, `claude-swarm` produces structured assumption logs that surface drift the baseline misses entirely. The assumption-sweep at the parent level converted 4 silent inferences into reviewable flags.
+1. **Define "done".** Write one failing test that captures what the sprint needs to achieve. Without this, the workflow has nothing to anchor to.
+2. **Plan the sub-tasks.** `/swarm` interviews you briefly, then writes one task description per sub-agent. Each task owns exactly one test file + one impl file.
+3. **Audit before spawning.** `/swarm-review` runs the audit script. Any failure blocks the workflow — you cannot proceed to step 4 with a failing audit.
+4. **Spawn sub-agents in parallel.** One agent per task description. They run independently with no need for cross-agent coordination.
+5. **Merge each finished sub-agent.** `/swarm-merge` checks the diff, reruns the umbrella test, reverts on regression.
+6. **Sweep assumptions.** When everything's green, the parent sweeps every sub-agent's assumption log for drift. Anything that contradicts the requirements or shared types surfaces as a flagged entry with a suggested patch.
 
 ## Install
 
@@ -149,58 +150,34 @@ cd claude-swarm
 rm -rf ~/.claude/skills/{swarm,swarm-review,swarm-merge,swarm-shared}
 ```
 
-## What you get
-
-| Skill | What |
-|---|---|
-| `/swarm` | Sprint bootstrap. 8-question intake, spec gate, umbrella-RED check, fat-file detection, type-contract validation, dependency map, leaf brief emission. |
-| `/swarm-review` | Deterministic 3-invariant audit (`check_invariants.py`): no overlapping ownership, no design verbs in briefs, every brief inside budget. Blocks spawning on FAIL. |
-| `/swarm-merge` | Post-leaf merge gate. Diff must be exactly 2 files (one test + one impl). Reruns umbrella. Reverts merge if umbrella regresses. |
-| `check_invariants.py` | Standalone audit script. Exit 0 = all pass, exit 1 = at least one finding, exit 2 = config error. Runnable in CI. |
-| `playbook.md` | The full theory: why the cascade exists, what each invariant prevents, intake interview rationale, parent assumption-sweep procedure. |
-| `brief-template.md` | Canonical leaf brief shape. `/swarm-review` will fail any brief that doesn't conform. |
-
-## How it works
-
-1. **Lock the spec.** Pick the spec file, the wave, and the strategy doc. `/swarm` runs the project's gate commands; if any gate fails, the sprint doesn't start.
-2. **Write the umbrella test (RED).** A single failing test that encodes the acceptance criteria. Must be RED before any decomposition — if it's green, the cascade has nothing to do.
-3. **Decompose into leaf briefs.** One test file + one impl file per brief. Briefs use imperative prose with concrete spec line citations. No design verbs allowed.
-4. **Audit before spawning.** `/swarm-review` runs `check_invariants.py` against every brief. Any FAIL blocks spawning. No exceptions.
-5. **Spawn agents.** One leaf per agent. Each agent has exactly one brief and the type contract. No cross-leaf coordination needed.
-6. **Merge with a guard.** `/swarm-merge` runs per green leaf. Diff must be exactly 2 files. Umbrella reruns. If it regresses, the merge is reverted before next leaf lands.
-7. **Sweep assumptions.** After all leaves are green and before declaring sprint done, the parent sweeps every assumption log for drift against the spec, strategy doc, and type contract. Drifts surface as flagged entries with damage assessments and patch suggestions.
-
-## Evidence
-
-- **Full eval bundle:** [evals/iteration-2/](evals/iteration-2/)
-- **Evaluation rubric:** [skills/swarm-shared/references/evaluation-rubric.md](skills/swarm-shared/references/evaluation-rubric.md)
-- **Per-eval verdicts:** look at `verdict.txt` inside each `eval-X-*/with_skill/outputs/` and `without_skill/outputs/`
-- **Per-eval transcripts:** look at `transcript.md` in the same directories
-- **Parent assumption-sweep report:** [evals/iteration-2/assumption-sweep-report.md](evals/iteration-2/assumption-sweep-report.md)
-
-> Note: the eval transcripts use the previous skill names (`/tdd-root`, `/tdd-review`, `/tdd-merge`) because they were captured before the release rename. The skill content is unchanged. See [evals/iteration-2/NOTE.md](evals/iteration-2/NOTE.md) for the full mapping.
-
 ## Config
 
-Drop a `.claude-swarm.toml` at your repo root to override defaults. Full schema at [skills/swarm-shared/references/config.md](skills/swarm-shared/references/config.md). Example template at [skills/swarm-shared/templates/.claude-swarm.toml.example](skills/swarm-shared/templates/.claude-swarm.toml.example).
-
-Minimum viable config:
+Optional. Drop a `.claude-swarm.toml` at your repo root to point claude-swarm at your test command and project layout:
 
 ```toml
-spec_dir          = "specs/"
-briefs_dir        = ".swarm/briefs/"
-umbrella_test_cmd = "pytest tests/umbrella -x"
+spec_dir           = "specs/"
+briefs_dir         = ".swarm/briefs/"
+umbrella_test_cmd  = "pytest tests/umbrella -x"
 type_contract_path = "src/contract.py"
 ```
 
-## Reading order
+Without a config file, claude-swarm uses sensible defaults — the only thing you'll *probably* need to set is `umbrella_test_cmd` so it knows how to run your test suite.
 
-- **New here?** Run `/swarm` on a small spec and let it walk you through.
-- **Want the theory?** Read [skills/swarm-shared/references/playbook.md](skills/swarm-shared/references/playbook.md).
-- **Want the brief shape?** See [skills/swarm-shared/references/brief-template.md](skills/swarm-shared/references/brief-template.md).
-- **Want the audit rules?** See [skills/swarm-shared/scripts/check_invariants.py](skills/swarm-shared/scripts/check_invariants.py).
-- **Want the evidence?** See [evals/iteration-2/](evals/iteration-2/).
+**What you can tune (via `.claude-swarm.toml`, never edit the script):**
+
+| Knob | Default | What it controls |
+|---|---|---|
+| `spec_dir` | `specs/` | Where your requirements docs live |
+| `briefs_dir` | `.swarm/briefs/` | Where sub-task descriptions land |
+| `type_contract_path` | _(unset)_ | Shared types file all sub-agents import |
+| `umbrella_test_cmd` | _(unset)_ | Command that runs the "done" test |
+| `parent_owned` | types files, conftest, umbrella tests, integration tests | Files only the parent agent can edit |
+| `max_impl_lines` | `200` | Cap on sub-task impl file size |
+| `max_test_assertions` | `20` | Cap on sub-task test file size |
+| `ambiguous_verbs` | `decide`, `choose`, `design`, `figure out`, … | Banned words in task descriptions |
+
+Full schema at [skills/swarm-shared/references/config.md](skills/swarm-shared/references/config.md).
 
 ## License
 
-MIT.
+MIT. Use it, fork it, ship it.

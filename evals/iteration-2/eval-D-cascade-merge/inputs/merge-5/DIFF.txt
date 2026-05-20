@@ -1,2 +1,0 @@
-src/myproj/dashboard/view.py
-tests/unit/test_dashboard_view.py
