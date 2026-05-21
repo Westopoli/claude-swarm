@@ -313,6 +313,9 @@ def _load_contract_symbols(root: Path, contract_path: str) -> set[str] | None:
         return None
     text = p.read_text()
     # crude symbol extraction: top-level class/def names + UPPER constants.
+    # Python and TypeScript/JavaScript patterns coexist in one pass — the
+    # keyword anchors don't overlap, so a TS contract and a Python contract
+    # both extract correctly without a per-language switch.
     syms: set[str] = set()
     for m in re.finditer(r"^(?:class|def)\s+(\w+)", text, re.MULTILINE):
         syms.add(m.group(1))
@@ -324,6 +327,20 @@ def _load_contract_symbols(root: Path, contract_path: str) -> set[str] | None:
             tok = raw.strip().strip("'\"")
             if tok:
                 syms.add(tok)
+    # TypeScript/JavaScript top-level exports
+    for m in re.finditer(
+        r"^export\s+(?:default\s+)?(?:async\s+)?"
+        r"(?:interface|type|class|enum|function|const|let|var)\s+(\w+)",
+        text, re.MULTILINE,
+    ):
+        syms.add(m.group(1))
+    # TS string-literal unions: `type Status = 'a' | 'b' | 'c'`
+    for m in re.finditer(
+        r"(?:^|\s)type\s+\w+\s*=\s*([^;{}\n]+(?:\n\s*\|[^;{}\n]+)*)",
+        text, re.MULTILINE,
+    ):
+        for tok in re.findall(r"['\"]([\w-]+)['\"]", m.group(1)):
+            syms.add(tok)
     return syms
 
 
