@@ -1,0 +1,76 @@
+{
+  "skill_name": "swarm-merge",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "merge leaf-03",
+      "expected_output": "Skill proceeds through all checks cleanly, reaches finalise path, appends to merge-log, emits graphify-skipped banner since graphify_cmd is empty.",
+      "files": [],
+      "expectations": [
+        "Skill reaches the finalise path (step 8a), not the revert path",
+        "Skill notes that graphify_cmd is not configured and skips the graph-coupling check with an explicit banner",
+        "Skill identifies no bypass — leaf-01 and leaf-02 are both in merge-log",
+        "Skill appends a new row to merge-log.md for leaf-03"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "merge leaf-03",
+      "expected_output": "Skill detects that leaf-02 has a brief in briefs_dir but no entry in merge-log, emits BYPASS DETECTED warning, and does not proceed without confirmation.",
+      "files": [],
+      "expectations": [
+        "Skill emits a BYPASS DETECTED warning identifying leaf-02",
+        "Skill blocks further progress until the user confirms whether to audit the bypass or accept the risk",
+        "Skill does not copy any staged files to destinations during this run"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "merge leaf-03",
+      "expected_output": "Skill detects that test_cache_hit regressed (was passing pre-merge, fails post-merge). Despite net count going from 3 to 5 (net +2), skill triggers the revert path and reports the regression by test name.",
+      "files": [],
+      "expectations": [
+        "Skill identifies test_cache_hit as having regressed (was PASSED, is now FAILED)",
+        "Skill triggers the revert path, not the finalise path",
+        "Skill explicitly states that net delta is irrelevant because a prior test regressed",
+        "Skill does NOT merge the staged files despite net assertion count increasing"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "merge leaf-03",
+      "expected_output": "Staging directory contains tests/umbrella_extended.py which matches parent_owned glob tests/umbrella*.py. Skill rejects at step 2 G1 check, names the offending file and the glob it matched.",
+      "files": [],
+      "expectations": [
+        "Skill rejects the staged files at the parent-owned check (step 2 G1)",
+        "Skill identifies tests/umbrella_extended.py as the offending file",
+        "Skill cites the parent_owned glob pattern it matched (tests/umbrella*.py)",
+        "Skill does not proceed to copy any files or run the umbrella"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "merge leaf-03",
+      "expected_output": "Skill reads leaf-03.ASSUMPTIONS.md and leaf-02.ASSUMPTIONS.md, detects that leaf-02 assumes cache miss returns {} while leaf-03 assumes it returns None, blocks the merge and lists the contradiction explicitly.",
+      "files": [],
+      "expectations": [
+        "Skill reads both leaf-03.ASSUMPTIONS.md and leaf-02.ASSUMPTIONS.md",
+        "Skill detects the contradiction on cache_miss_return value (None vs {})",
+        "Skill blocks the merge at step 6.5 and lists the conflict explicitly",
+        "Skill does not proceed to finalise despite umbrella passing"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "merge leaf-03",
+      "expected_output": "Skill parses the ## Acceptance block from leaf-03.md, runs pytest tests/test_cache_ttl.py -v as a second gate, reports it passed, and proceeds to finalise.",
+      "files": [],
+      "expectations": [
+        "Skill parses the ## Acceptance block from the brief and identifies the test command",
+        "Skill runs the brief acceptance command as a second independent gate",
+        "Skill reports the acceptance gate passed",
+        "Skill proceeds to finalise after both umbrella and acceptance gate pass"
+      ]
+    }
+  ]
+}

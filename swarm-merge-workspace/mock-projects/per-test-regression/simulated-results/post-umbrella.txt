@@ -1,0 +1,8 @@
+tests/umbrella.py::test_cache_init PASSED
+tests/umbrella.py::test_cache_hit FAILED
+tests/umbrella.py::test_cache_miss PASSED
+tests/umbrella.py::test_ttl_keyA PASSED
+tests/umbrella.py::test_ttl_keyB PASSED
+tests/umbrella.py::test_ttl_keyC PASSED
+
+5 passed, 1 failed in 0.06s

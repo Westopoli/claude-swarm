@@ -1,0 +1,7 @@
+briefs_dir = ".swarm/briefs/"
+umbrella_test_cmd = "pytest tests/umbrella.py -v --tb=no -q"
+graphify_cmd = ""
+parent_owned = ["src/**/types.py","tests/conftest.py","tests/umbrella*.py"]
+[invariants]
+max_impl_lines = 200
+max_test_assertions = 20

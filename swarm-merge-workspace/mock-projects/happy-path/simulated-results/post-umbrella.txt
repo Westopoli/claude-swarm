@@ -1,0 +1,7 @@
+tests/umbrella.py::test_cache_init PASSED
+tests/umbrella.py::test_cache_hit PASSED
+tests/umbrella.py::test_cache_miss PASSED
+tests/umbrella.py::test_cache_ttl_none PASSED
+tests/umbrella.py::test_cache_ttl_set PASSED
+
+5 passed in 0.06s

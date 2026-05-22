@@ -16,7 +16,7 @@ Three slash commands. Three safety nets.
 |---|---|
 | `/swarm` | Plans the work: reads your requirements, writes a single failing test that defines "done", emits one task description per sub-agent. |
 | `/swarm-review` | Audits the task descriptions before any sub-agent starts. Blocks if two would edit the same file, if any task contains ambiguous design language, or if a task is oversized. |
-| `/swarm-merge` | Lands each sub-agent's work safely. Verifies the diff is exactly two files, reruns the "done" test, reverts if anything regresses. |
+| `/swarm-merge` | Lands each sub-agent's work safely. Verifies staged files are exactly two (one impl + one test), reruns the umbrella test, reverts if anything regresses. |
 
 ---
 
@@ -32,7 +32,7 @@ A failing test fixes the root cause. The API is pinned before any code runs — 
 
 ## The north-star test
 
-Every sprint starts with **one failing test** that defines what "done" looks like for the entire batch of work. We call it the **umbrella test** — it's the north star every sub-agent moves toward.
+Every wave starts with **one failing test** that defines what "done" looks like for the entire batch of work. We call it the **umbrella test** — it's the north star every sub-agent moves toward.
 
 ```
                                 umbrella test (failing)
@@ -46,10 +46,10 @@ Every sprint starts with **one failing test** that defines what "done" looks lik
                                           ▼
                                 umbrella test (passing)
                                           │
-                                      sprint done
+                                      wave done
 ```
 
-Each sub-task is one test file + one impl file. The sub-task is done when its own test passes. The sprint is done when the umbrella test passes. No passing umbrella, no merge.
+Each sub-task is one test file + one impl file. The sub-task is done when its own test passes. The wave is done when the umbrella test passes. No passing umbrella, no merge.
 
 ## Before / After
 
@@ -81,7 +81,7 @@ Each sub-task is one test file + one impl file. The sub-task is done when its ow
        for each green sub-task: /swarm-merge
                   │
                   ▼
-            umbrella test passes → sprint done
+            umbrella test passes → wave done
 ```
 
 ## Benchmarks
@@ -107,47 +107,61 @@ The load-bearing evals are B and E: real time gets lost when those gates get ski
 
 | Skill | What |
 |---|---|
-| `/swarm` | Plans the sprint: short intake interview, runs your project's gate commands, writes the failing umbrella test, emits one task description per sub-agent. |
+| `/swarm` | Plans the wave: short intake interview, runs your project's gate commands, writes the failing umbrella test, emits one task description per sub-agent. |
 | `/swarm-review` | Runs a deterministic audit script. Blocks if any two tasks edit the same file, if any task contains ambiguous design verbs (`decide`, `figure out`, …), or if any task exceeds the size budget. |
-| `/swarm-merge` | Lands each sub-agent's work. Diff must be exactly two files. Reruns the umbrella test. Reverts the merge if the umbrella regresses. |
+| `/swarm-merge` | Lands each sub-agent's work. Staged files must be exactly two (one impl + one test). Reruns the umbrella test. Reverts if the umbrella regresses. |
 | `check_invariants.py` | Standalone audit script — runnable in CI without Claude Code. |
 | `playbook.md` | The full theory: why each invariant exists, what failure mode it prevents. |
 
 ## How it works
 
-1. **Define "done".** Write one failing test that captures what the sprint needs to achieve. Without this, the workflow has nothing to anchor to.
+1. **Define "done".** Write one failing test that captures what the wave needs to achieve. Without this, the workflow has nothing to anchor to.
 2. **Plan the sub-tasks.** `/swarm` interviews you briefly, then writes one task description per sub-agent. Each task owns exactly one test file + one impl file.
 3. **Audit before spawning.** `/swarm-review` runs the audit script. Any failure blocks the workflow — you cannot proceed to step 4 with a failing audit.
 4. **Spawn sub-agents in parallel.** One agent per task description. They run independently with no need for cross-agent coordination.
-5. **Merge each finished sub-agent.** `/swarm-merge` checks the diff, reruns the umbrella test, reverts on regression.
+5. **Merge each finished sub-agent.** `/swarm-merge` checks staged files, reruns the umbrella test, reverts on regression.
 6. **Sweep assumptions.** When everything's green, the parent sweeps every sub-agent's assumption log for drift. Anything that contradicts the requirements or shared types surfaces as a flagged entry with a suggested patch.
 
 ## Install
 
+Copies the skills into `~/.claude/skills/`. Restart Claude Code, then invoke any of `/swarm`, `/swarm-review`, `/swarm-merge`.
+
+**macOS / Linux**
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Westopoli/claude-swarm/main/install.sh | bash
 ```
 
-Copies the skills into `~/.claude/skills/`. Restart Claude Code, then invoke any of:
-
-```
-/swarm
-/swarm-review
-/swarm-merge
+**Windows (PowerShell)**
+```powershell
+irm https://raw.githubusercontent.com/Westopoli/claude-swarm/main/install.ps1 | iex
 ```
 
 ### Manual install
 
 ```bash
+# macOS / Linux
 git clone https://github.com/Westopoli/claude-swarm
 cd claude-swarm
 ./install.sh
 ```
 
+```powershell
+# Windows
+git clone https://github.com/Westopoli/claude-swarm
+cd claude-swarm
+.\install.ps1
+```
+
 ### Uninstall
 
 ```bash
+# macOS / Linux
 rm -rf ~/.claude/skills/{swarm,swarm-review,swarm-merge,swarm-shared}
+```
+
+```powershell
+# Windows
+Remove-Item -Recurse -Force $env:USERPROFILE\.claude\skills\swarm*, $env:USERPROFILE\.claude\skills\swarm-shared
 ```
 
 ## Config
