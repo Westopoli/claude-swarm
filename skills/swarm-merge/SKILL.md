@@ -162,13 +162,23 @@ This step runs after the post-merge umbrella and before the merge decision.
 
 - Staged files are already in place (copied in step 6).
 - Delete `.swarm/pending/leaf-NN/` (staging is consumed).
-- Append to `.swarm/merge-log.md`:
+- If `merge-log.md` does not yet exist, create it with this exact header before appending:
+
+```
+# Merge Log — append-only, do not edit manually
+# Editing this file invalidates bypass-detection. Each entry written by /swarm-merge only.
+
+| leaf_id | files | delta | timestamp | status |
+|---------|-------|-------|-----------|--------|
+```
+
+- Append one row:
 
 ```
 | leaf-NN | <impl_file>, <test_file> | +N | <ISO timestamp> | clean |
 ```
 
-  The log is append-only. Never edit, reorder, or delete entries. The bypass check in step 0.5 depends on the log being an accurate, ordered record of every gated merge.
+  The log is append-only. Never edit, reorder, or delete entries. The bypass check in step 0.5 depends on the log being an accurate, ordered record of every gated merge. Integrity is verified by the header presence and timestamp ordering.
 
 - If `graphify_cmd` is set, run it. Inspect the dependency map diff for unexpected couplings — a new import edge between leaf-owned modules that wasn't in the design. Flag for the user. If `graphify_cmd` is not set, render: `step 8: graph-coupling check skipped (graphify_cmd not configured)`.
 
