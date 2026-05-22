@@ -80,16 +80,30 @@ This is non-negotiable. A leaf that needed to touch a third file made a design d
 - Run `umbrella_test_cmd` from config.
 - Capture which assertions passed before the merge vs after. (Re-run on the pre-merge state if the user hasn't kept a baseline.)
 
+### 4.5 Assumption sweep (hard gate)
+
+This step runs after the umbrella and before any merge decision.
+
+- Read `<briefs_dir>/leaf-NN.ASSUMPTIONS.md` for the leaf being merged.
+- List all assumption files for already-merged siblings in `<briefs_dir>` (files matching `leaf-??.ASSUMPTIONS.md` whose leaf was previously merged).
+- If a contradiction exists between the merging leaf's assumptions and any sibling's assumptions (e.g., leaf-02 assumes "users table has no `deleted_at`" and leaf-04 assumed "users table has `deleted_at`") → **block merge**, list every conflict explicitly.
+- If no contradictions: continue.
+- If no `leaf-NN.ASSUMPTIONS.md` exists for this leaf, note it but do not block.
+
 ### 5. Decide
 
-- **More assertions pass than before:** merge. Continue to step 6.
+- **More assertions pass than before:** check expected delta (from intake Q5). If actual delta matches expected → merge. If actual delta is positive but doesn't match expected (e.g., expected +3, actual +5), issue yellow flag:
+
+  > ⚠ Delta mismatch: expected +N, got +M. Leaf may have covered sibling territory. Verify scope before merging.
+
+  Confirm with user before proceeding.
 - **Same number of assertions pass:** the leaf's behavior wasn't load-bearing for the umbrella. That's possible (the slice may have been for an integration boundary), but it's a yellow flag. Warn the user and confirm before merging.
 - **Fewer assertions pass than before:** revert. Continue to step 7 (regression).
 
 ### 6. Merge + regen map
 
 - Merge the leaf branch (`git merge --ff-only` if the branch is rebased; otherwise a regular merge — never `--squash` because the audit trail wants the two-file commit preserved).
-- If `graphify_cmd` is set, run it. Inspect the diff in the dependency map for **unexpected couplings**: an import path that wasn't present in pre-merge graph, or a new edge between two leaf-owned modules. Flag for the user — a coupling that wasn't in the design is the leaf making a structural decision.
+- If `graphify_cmd` is set, run it. Inspect the diff in the dependency map for **unexpected couplings**: an import path that wasn't present in pre-merge graph, or a new edge between two leaf-owned modules. Flag for the user — a coupling that wasn't in the design is the leaf making a structural decision. If `graphify_cmd` is not set, render: `step 6: graph-coupling check skipped (graphify_cmd not configured)` — do not silently skip.
 
 ### 7. Regression path
 
