@@ -17,8 +17,14 @@ Write-Host "claude-swarm -- installing to $SKILLS_DIR"
 New-Item -ItemType Directory -Force -Path $SKILLS_DIR | Out-Null
 
 # Determine source: local checkout or fresh clone.
-$SCRIPT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Definition
-if (Test-Path (Join-Path $SCRIPT_DIR "skills")) {
+# $MyInvocation.MyCommand.Definition returns the pipe string when run via irm|iex,
+# not a file path — so guard against that before calling Split-Path.
+if ($MyInvocation.MyCommand.CommandType -eq 'ExternalScript') {
+    $SCRIPT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Definition
+} else {
+    $SCRIPT_DIR = $null  # running via iex/pipe — no local dir
+}
+if ($SCRIPT_DIR -and (Test-Path (Join-Path $SCRIPT_DIR "skills"))) {
     $SRC = Join-Path $SCRIPT_DIR "skills"
     Write-Host "  source: local checkout ($SRC)"
 } else {

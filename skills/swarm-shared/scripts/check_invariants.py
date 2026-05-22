@@ -348,7 +348,7 @@ def check_sizing(briefs: list[Brief], invariants: dict[str, Any]) -> list[Failur
 
 def audit(briefs_dir: Path, cfg: dict[str, Any], root: Path) -> Report:
     rpt = Report()
-    for path in sorted(briefs_dir.glob("*.md")):
+    for path in sorted(briefs_dir.glob("leaf-*.md")):
         b = parse_brief(path)
         if b is None:
             rpt.failures.append(Failure(path.stem, "schema",
