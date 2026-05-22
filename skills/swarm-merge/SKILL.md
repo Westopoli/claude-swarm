@@ -31,10 +31,31 @@ Record an assumption log at `<briefs_dir>/leaf-NN.MERGE_ASSUMPTIONS.md` listing 
 
 ## Procedure
 
+### 0.5 Retroactive bypass check
+
+Before touching the leaf branch, verify no sibling leaf landed on `main` outside this protocol.
+
+- Run `git log <prior-wave-close-commit>..main --oneline` (use the wave's root commit as the lower bound; if unknown, ask the user).
+- For each commit, regex-match the message against the leaf-NN pattern (e.g. `leaf-\d+`, `leaf-NN`, or whatever naming the briefs use).
+- Cross-reference against briefs in `<briefs_dir>`: a commit whose message matches a known leaf but has no corresponding `/swarm-merge` gate record is a bypass.
+- If any bypass found, print at the top of the report **before continuing**:
+
+> ⚠ BYPASS DETECTED: `<hash>` `<message>` — this leaf committed directly to main without a gate run. The two-file rule and brief-match were never verified for it. Confirm whether to audit it now or accept the risk before proceeding.
+
+Do not silently continue past a detected bypass.
+
 ### 1. Locate the leaf diff
 
 - Ask the user which branch / worktree / commit range to merge if it isn't obvious from context.
 - Run `git diff --name-only <base>...<head>`. Capture the file list.
+- **Base-divergence check:** Run `git merge-base <leaf-head> main`. If the result is not equal to `main HEAD`, surface:
+
+> ⚠ Leaf base is N commits behind main. Choose before continuing:
+> - **(r) Rebase** leaf onto current main, then re-run this skill.
+> - **(c) Cherry-pick** leaf commits onto main directly.
+> - **(x) Abort** — investigate manually.
+
+This is an explicit user choice. Do not silently pick a strategy.
 
 ### 2. Two-file rule
 
