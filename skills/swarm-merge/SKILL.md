@@ -69,6 +69,13 @@ If it touches more, or fewer, or one of either kind:
 
 This is non-negotiable. A leaf that needed to touch a third file made a design decision (or stepped on parent-owned infrastructure) — both failure modes the cascade explicitly prevents. The right fix is either re-slicing the brief or escalating to the parent for a contract change.
 
+**Forensic history check:** Even when the two-file count is clean, verify the leaf branch history wasn't rewritten:
+
+- Run `git log <base>..<head> --diff-filter=AM --name-only` and confirm only the two expected files appear across all commits.
+- Check reflog: run `git rev-parse <branch>@{push} 2>/dev/null`. If this diverges from the current branch tip, the branch was force-pushed. Surface:
+
+  > ⚠ Possible force-push on leaf branch. Forensic confidence low — history may have been rewritten after the agent reported green.
+
 ### 3. Confirm the two files match the brief
 
 - Read the brief at `<briefs_dir>/leaf-NN.md`.
@@ -79,6 +86,7 @@ This is non-negotiable. A leaf that needed to touch a third file made a design d
 
 - Run `umbrella_test_cmd` from config.
 - Capture which assertions passed before the merge vs after. (Re-run on the pre-merge state if the user hasn't kept a baseline.)
+- **Brief acceptance gate:** Parse the brief at `<briefs_dir>/leaf-NN.md` for an `Acceptance:` or `## Acceptance` block. If a test command is specified there, run it as a second independent gate. Both the umbrella and the brief's acceptance command must pass. If the brief has no acceptance block, render: `step 4: brief acceptance gate skipped (no Acceptance block in brief)`.
 
 ### 4.5 Assumption sweep (hard gate)
 
