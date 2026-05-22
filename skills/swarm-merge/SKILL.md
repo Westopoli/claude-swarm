@@ -1,6 +1,6 @@
 ---
 name: swarm-merge
-description: Run the post-leaf merge protocol after a TDD-cascade leaf agent reports green. Use whenever the user says "merge this leaf", "leaf-NN is done, integrate it", "the agent reports green", "bring this back into main", "run the umbrella after this branch", or any time a leaf finishes and its two-file diff is ready to land. This skill verifies the staged diff is exactly two files (neither parent-owned), runs the umbrella pre and post, checks per-test regressions by name, and restores the originals if the umbrella regresses. Always use this in place of an ad-hoc file copy for leaf work — ad-hoc copies silently re-introduce the failure modes the cascade prevents.
+description: Run the post-leaf merge protocol after a TDD-cascade leaf agent reports green. Use whenever the user says "merge this leaf", "leaf-NN is done, integrate it", "the agent reports green", "bring this back into main", "run the umbrella after this branch", or any time a leaf finishes and its two-file diff is ready to land. Also use when the user says "merge all leaves", "merge the queue", "process all pending", or wants to merge multiple leaves at once — invoke queue mode (/swarm-merge queue) which pre-validates all leaves in parallel then merges sequentially with a full umbrella run per leaf. This skill verifies staged files are exactly two (neither parent-owned), runs the umbrella pre and post, checks per-test regressions by name, and restores the originals if the umbrella regresses. Always use this in place of an ad-hoc file copy for leaf work — ad-hoc copies silently re-introduce the failure modes the cascade prevents.
 ---
 
 # /swarm-merge — post-leaf merge protocol
@@ -197,12 +197,77 @@ This step runs after the post-merge umbrella and before the merge decision.
 
 ---
 
+## Queue mode — `/swarm-merge queue`
+
+Processes all pending leaves automatically: pre-validates every leaf in parallel (fast failure across all), then merges sequentially with a full umbrella run per leaf. One command replaces N invocations without sacrificing regression attribution.
+
+### Intake for queue mode
+
+Ask as a single block before doing anything:
+
+1. **Which wave?** Confirm all pending leaves belong to the same wave.
+2. **Umbrella baseline?** If some leaves were already merged this session, the baseline is post-last-merge state, not the wave root.
+3. **Expected total delta?** Sum across all leaves. Per-leaf mismatches still trigger individual yellow flags.
+
+If non-interactive: log a `QUEUE_ASSUMPTIONS.md` in `briefs_dir` with inferred answers. Proceed.
+
+### Phase 1 — Parallel pre-validation
+
+Before any files are copied, validate every leaf under `.swarm/pending/` simultaneously. For each leaf, run:
+
+- **Step 0.5 bypass check (queue-aware):** A bypass is a leaf whose brief exists, whose NN is less than the smallest NN in the current queue, and that has no pending dir AND no merge-log entry. A leaf currently in the queue is not a bypass — it is staged and waiting. Flag genuine bypasses before proceeding.
+- **Step 1** — staging dir exists and non-empty
+- **Step 2** — two-file rule + G1 parent-owned check
+- **Step 3** — brief match
+- **Step 4** — G2 ASSUMPTIONS file check
+
+Collect all failures across all leaves. If any leaf fails pre-validation:
+
+> Pre-validation failed for N leaves:
+> - leaf-07: tests/umbrella_extended.py matches parent-owned glob tests/umbrella*.py
+> - leaf-12: staged impl_file does not match brief (src/foo.py ≠ src/bar.py)
+> - leaf-19: staging directory empty
+>
+> Fix all failures before re-running /swarm-merge queue. No files have been copied.
+
+If all pass: print `Pre-validation passed for N leaves. Beginning sequential merge.`
+
+### Phase 2 — Sequential merge
+
+Process leaves in ascending NN order. For each leaf, run steps 5–8 exactly as in single-leaf mode (pre-umbrella, copy, post-umbrella, acceptance gate, assumption sweep, decide, finalise or revert).
+
+**On finalise:** continue to next leaf.
+
+**On revert:** stop immediately.
+
+> Queue stopped at leaf-NN — regression detected: `<test-name>` was passing before this merge and is now failing. N leaves remain pending. Fix leaf-NN and re-run `/swarm-merge queue`.
+
+Never skip a failed leaf and continue. A regression in the middle corrupts the umbrella baseline for every subsequent leaf.
+
+### Queue completion report
+
+When all leaves merge cleanly, print:
+
+```
+Queue complete — N leaves merged.
+
+| leaf    | delta | status |
+|---------|-------|--------|
+| leaf-01 | +2    | clean  |
+| leaf-02 | +1    | clean  |
+| ...     |       |        |
+
+Total delta: +N assertions
+```
+
+---
+
 ## What this skill must not do
 
 - Edit `merge-log.md` except by appending. Never reorder, correct, or remove entries. The log's integrity is the only tamper-detection mechanism.
 - Copy files outside of the staging-to-destination path. Skill touches exactly two destination files per run.
 - Skip the umbrella run because "the change is small." Every merge runs the umbrella.
-- Batch multiple leaves. One leaf → one umbrella run → one finalise or one revert.
+- Merge multiple leaves under a single umbrella run. Queue mode runs one umbrella per leaf — that per-leaf attribution is the point. Never collapse multiple leaves into one umbrella pass.
 - Proceed past a bypass warning without explicit user confirmation.
 
 ---
@@ -220,6 +285,12 @@ The three invariants (non-overlap, no design decisions, sizing) are enforced ide
 
 ---
 
-## Why this skill is event-driven
+## Why queue mode preserves attribution
 
-The umbrella is the only signal that a merge made forward progress. Running it after every leaf — not after a batch — keeps the attribution clean. If leaf-04's merge regressed an assertion, you know immediately. If leaves 03–07 batched and one of them regressed, you're bisecting. The skill is the friction that makes the cheap path (one-at-a-time) also the correct path.
+Queue mode runs one umbrella per leaf, sequentially. If leaf-07 regresses a test, the queue stops at leaf-07 and names the test. The remaining leaves are untouched. You fix exactly one thing.
+
+Contrast with a true batch (one umbrella for N leaves): a failure could be caused by any of the N merges, or by their interaction. You're bisecting instead of reading a report.
+
+Pre-validation runs in parallel because structural failures (wrong file count, parent-owned violation, brief mismatch) are detectable without the umbrella and don't affect each other. Running them concurrently gives you all failures at once before any merge starts — no waiting 20 leaves to discover leaf-23 staged a parent-owned file.
+
+The invariant: one umbrella run per leaf merged, always. Queue mode automates the sequence; it does not collapse it.
