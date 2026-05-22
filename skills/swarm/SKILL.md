@@ -11,16 +11,16 @@ The companion theory lives at `~/.claude/skills/swarm-shared/references/playbook
 
 ## 0. Intake — ASK BEFORE PROCEDURE
 
-Before step 1, lock the scope of this batch. The questions below exist because every cascade failure traced post-mortem in this project started with one of these answers being **inferred** by the parent agent instead of stated by the user.
+Before step 1, lock the scope of this batch. The questions below exist because the most common cascade failure mode starts with one of these answers being **inferred** by the parent agent instead of stated by the user.
 
 **If the invocation is interactive** (you can ask and wait):
 
 Ask the user the 7 questions below as a single block. Skip a question only if the user already answered it explicitly in the invoking prompt. Do not infer answers from file context — silent inference is how parents drift from intent.
 
 1. **Which spec file?** Path under `spec_dir/`. If multiple plausible specs exist, list them and ask.
-2. **Which wave of this spec?** (1, 2, ...). Drives the `wave` field on every brief.
+2. **Which wave of this spec?** (1, 2, ...). A *wave* is a sequential batch of parallel leaves; wave 2 can edit files wave 1 already owned. Drives the `wave` field on every brief.
 3. **Expected leaf count, order of magnitude?** (3 / 10 / 20?). If the dependency map in step 5 suggests >2× your estimate either way, stop and reconcile with the user before emitting briefs — count mismatch is the earliest signal that the parent and user are picturing different decompositions.
-4. **Strategy doc / source-of-truth design doc path?** (the "bible"). You will read this before step 2's spec gate to check spec-vs-bible alignment.
+4. **Strategy doc / source-of-truth design doc path?** (the "strategy doc"). You will read this before step 2's spec gate to check spec-vs-strategy-doc alignment.
 5. **Anything new in the strategy doc since the last decomposition?** A one-liner from the user is enough; affects whether prior brief conventions still hold.
 6. **Anything intentionally out of scope for this batch?** So you do not propose leaves for it.
 7. **Who reviews the briefs?** Just `/swarm-review`, or human + `/swarm-review`? Affects how cautious to be on borderline slicing calls.
@@ -61,7 +61,7 @@ Run these steps in order. Stop at the first failure and report.
 - Confirm a spec file in `spec_dir` is named (ask the user if ambiguous — never pick one silently).
 - Run every command in `[gates].extra_spec_gate_cmds`. Any non-zero exit = gate fail. Report which command and exit code.
 - This skill exports `$SPEC_FILE` before running each gate so project-specific gate scripts can reference the chosen spec.
-- **Fat-file check (only if intake Q8 = "modifying existing"):** For each impl file the spec implies will be touched, read the file and count its lines and top-level functions/classes. If any single existing file appears to cover more than one planned leaf's scope (rough heuristic: >200 lines AND contains branches across multiple distinct behaviors the spec decomposes into separate ACs), flag it:
+- **Fat-file check (only if intake Q8 = "modifying existing"):** For each impl file the spec implies will be touched, read the file and count its lines and top-level functions/classes. If any single existing file appears to cover more than one planned leaf's scope (rough heuristic: >200 lines AND contains branches across multiple distinct behaviors the spec decomposes into separate ACs — acceptance criteria, abbreviated AC throughout), flag it:
 
   > **Fat-file warning:** `<path>` is `N` lines and covers ACs X, Y, Z which you plan to assign to separate leaves. Two resolution paths:
   > - **(a) Sequential waves** — assign leaf covering AC-X as wave 1, leaf covering AC-Y as wave 2. Same file, one owner at a time. Parallelism reduced.
@@ -127,7 +127,7 @@ If a leaf produced no assumption log, that's fine — it means the brief was ful
 Read every entry across all logs. Flag any entry that matches one of these patterns:
 
 1. **Contradicts the spec.** Assumption picks a value the spec explicitly contradicts. (E.g., spec says "use SQL," leaf assumes pandas.)
-2. **Contradicts the strategy doc / bible.** Assumption picks a value the bible explicitly forbids.
+2. **Contradicts the strategy doc.** Assumption picks a value the strategy doc explicitly forbids.
 3. **Cross-leaf contradiction.** Two leaves made incompatible assumptions about the same shared interface (e.g., leaf-04 assumes the cache returns `None` on miss, leaf-07 assumes it returns `{}`).
 4. **Fabricated symbol or path.** Assumption references a type, function, file, or config key that does not exist in the type contract or repo.
 5. **Compounded inference.** A leaf assumption is justified by *another* assumption rather than by a spec line or contract symbol. Layered guesses compound at scale.

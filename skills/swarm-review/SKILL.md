@@ -20,7 +20,7 @@ Before running the check script, lock the scope of this audit so the findings ca
 Ask the user as a single block:
 
 1. **Which briefs directory?** (Default: `briefs_dir` from `.claude-swarm.toml`.)
-2. **Single wave or multi-wave audit?** Multi-wave changes how `non-overlap` is interpreted (waves are sequential — leaf-04 in wave 1 may legitimately own a file leaf-12 in wave 2 also touches).
+2. **Single wave or multi-wave audit?** A *wave* is a sequential batch of parallel leaves; wave N+1 runs after all wave-N leaves merge and may re-edit wave-N-owned files. Multi-wave changes how `non-overlap` is interpreted (waves are sequential — leaf-04 in wave 1 may legitimately own a file leaf-12 in wave 2 also touches).
 3. **Were these briefs just emitted by `/swarm`, or were they hand-edited after a prior FAIL?** Hand-edits without re-running `/swarm` can re-introduce drift the original procedure caught.
 4. **Anything you already know is borderline?** (E.g., "leaf-09 is intentionally on the edge of the sizing budget — flag if you must but it's an explicit choice.") Borderline cases the user has already signed off on can be Advisory rather than blocking.
 

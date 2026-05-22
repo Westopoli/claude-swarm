@@ -84,7 +84,7 @@ Receives one assignment: one test file, one impl file, the spec line range it mu
 
 ## Intake interview and the assumption log
 
-Every cascade skill (`/swarm`, `/swarm-review`, `/swarm-merge`) begins with an **intake interview**. The interview lives in the skill's own SKILL.md "Step 0" section. Its purpose: lock the scope of the batch *before* any procedure runs, because every cascade failure in this project's history traced post-mortem to one of the intake questions being silently inferred by the parent agent instead of stated by the user.
+Every cascade skill (`/swarm`, `/swarm-review`, `/swarm-merge`) begins with an **intake interview**. The interview lives in the skill's own SKILL.md "Step 0" section. Its purpose: lock the scope of the batch *before* any procedure runs, because the most common cascade failure mode traces post-mortem to one of the intake questions being silently inferred by the parent agent instead of stated by the user.
 
 **Interactive invocation:** ask the questions, wait for answers, restate scope, confirm.
 
@@ -104,7 +104,7 @@ The reason this is a written convention rather than a free-form check: an LLM au
 
 ---
 
-## Prep steps and cross-sprint seam stability
+## Prep steps and long-term seam stability
 
 The cascade works on existing projects, not just green-field ones. Two patterns emerge specifically on mature codebases.
 
@@ -122,16 +122,16 @@ The prep step is the parent's move, not the leaf's. No leaf may restructure a fi
 
 ### Seam-axis commitment
 
-The split seam chosen in a prep step (by op kind, by strategy, by module boundary, by contact type) is an architectural commitment. Changing seams later costs a re-restructuring sprint. Before committing, ask:
-- Is this axis stable for the next 2–3 sprints?
-- Does the axis map to a stable dimension of the spec (e.g., the bible's strategy taxonomy) rather than to the current wave's AC list?
+The split seam chosen in a prep step (by op kind, by strategy, by module boundary, by contact type) is an architectural commitment. Changing seams later costs a re-restructuring pass. Before committing, ask:
+- Is this axis stable through the next few waves of work?
+- Does the axis map to a stable dimension of the spec (e.g., the strategy doc's taxonomy) rather than to the current wave's AC list?
 - Will new features add new slices along this axis, or cross-cut it?
 
-Record the seam-axis decision in `decisions.md` with an explicit "review at sprint N" clause. That makes future re-seaming a planned event, not a surprise.
+Record the seam-axis decision in `decisions.md` with an explicit "review at wave N" clause. That makes future re-seaming a planned event, not a surprise.
 
 ### When not to do a prep step
 
-If sequential waves cost only 1–2 merges of serialization, that is cheaper than a prep-step split. Reserve prep steps for cases where the serialization cost is high (many sequential leaves on the same file over multiple waves) or where the fat file is a recurrence risk (every new sprint hits the same collision).
+If sequential waves cost only 1–2 merges of serialization, that is cheaper than a prep-step split. Reserve prep steps for cases where the serialization cost is high (many sequential leaves on the same file over multiple waves) or where the fat file is a recurrence risk (every new wave hits the same collision).
 
 ### Long-term accumulation risk
 
