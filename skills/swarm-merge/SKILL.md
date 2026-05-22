@@ -84,8 +84,9 @@ This is non-negotiable. A leaf that needed to touch a third file made a design d
 
 ### 4. Run the umbrella
 
-- Run `umbrella_test_cmd` from config.
-- Capture which assertions passed before the merge vs after. (Re-run on the pre-merge state if the user hasn't kept a baseline.)
+- Run `umbrella_test_cmd` from config **twice**: once on the pre-merge state (or use a kept baseline), once after applying the leaf diff.
+- Capture **named per-test results** from both runs, not just counts. For pytest, add `-v --tb=no -q` if not already in the command to get one `PASSED`/`FAILED` line per test. For other runners, capture whatever named output is available.
+- If the runner emits no per-test names (only a summary count), record that explicitly: `step 4: per-test names unavailable — regression detection will be count-only (weaker gate)`.
 - **Brief acceptance gate:** Parse the brief at `<briefs_dir>/leaf-NN.md` for an `Acceptance:` or `## Acceptance` block. If a test command is specified there, run it as a second independent gate. Both the umbrella and the brief's acceptance command must pass. If the brief has no acceptance block, render: `step 4: brief acceptance gate skipped (no Acceptance block in brief)`.
 
 ### 4.5 Assumption sweep (hard gate)
@@ -99,6 +100,19 @@ This step runs after the umbrella and before any merge decision.
 - If no `leaf-NN.ASSUMPTIONS.md` exists for this leaf, note it but do not block.
 
 ### 5. Decide
+
+First, regardless of net count, check for **per-test regressions**:
+
+- Compute `regressed = pre_passing_tests − post_passing_tests` (tests that were passing before and are now failing).
+- If `regressed` is non-empty → **revert immediately**, regardless of net delta. Continue to step 7. Report each regressed test by name.
+
+  > ⚠ Regression detected: `<test-name>` was passing before merge and is now failing. Net delta is irrelevant — a previously-stable test broke. Reverting.
+
+  This catches the case where a leaf adds 3 new passes but breaks 1 prior-wave assertion: net +2 looks clean but a regression landed.
+
+- If per-test names were unavailable (count-only mode flagged in step 4): skip the set-diff check and fall through to count comparison, but emit: `⚠ Per-test regression check skipped (count-only mode). Count-based gate only — prior-wave regressions may go undetected.`
+
+Then check net count and expected delta:
 
 - **More assertions pass than before:** check expected delta (from intake Q5). If actual delta matches expected → merge. If actual delta is positive but doesn't match expected (e.g., expected +3, actual +5), issue yellow flag:
 
