@@ -53,7 +53,10 @@ determine, figure out, resolve, "as appropriate").>
 ## Acceptance
 
 Run `<test command>` for this test_file. Confirm RED. Implement in impl_file
-only. Confirm GREEN. Commit the two files. Stop.
+only. Confirm GREEN. Write your final `test_file` and `impl_file` to
+`.swarm/pending/leaf-NN/` mirroring their paths from the project root
+(e.g. `src/cache.py` → `.swarm/pending/leaf-03/src/cache.py`). Stop.
+Do not copy files to their real destinations — `/swarm-merge` does that after gating.
 
 ## Escalation triggers
 
