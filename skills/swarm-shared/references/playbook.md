@@ -100,7 +100,7 @@ Leaf agents follow the same convention: if a leaf had to infer anything, write `
 
 After all leaves report green and before any `/swarm-merge` runs, the parent runs the **assumption-sweep** (procedure in `/swarm`'s SKILL.md). The sweep reads every log, classifies entries against the spec, the strategy doc, and the type contract, and surfaces drift with a damage assessment and a patch suggestion. The user makes the call on patch vs. redo. Default bias: patch — redo costs an afternoon, a patch usually costs minutes.
 
-The reason this is a written convention rather than a free-form check: an LLM auditing its own inferences in the same turn rarely catches them. A separate sweep, against persisted logs, with explicit categories (contradicts-spec / contradicts-bible / cross-leaf / fabricated / compounded), forces structured re-examination.
+The reason this is a written convention rather than a free-form check: an LLM auditing its own inferences in the same turn rarely catches them. A separate sweep, against persisted logs, with explicit categories (contradicts-spec / contradicts-strategy-doc / cross-leaf / fabricated / compounded), forces structured re-examination.
 
 ---
 
@@ -113,7 +113,7 @@ The cascade works on existing projects, not just green-field ones. Two patterns 
 A **prep step** is a parent-owned architectural commit that happens *before* decomposition — not a leaf brief, not a code-writing task. It exists when reslicing alone cannot resolve a fat-file collision: one existing file covers multiple ACs that must become separate leaves, and sequential waves would cost too much parallelism.
 
 Prep step protocol:
-1. Parent identifies the file and the split seam (e.g., one function per AC, one sub-file per op kind).
+1. Parent identifies the file and the split seam (e.g., one function per AC, one sub-file per feature).
 2. Parent commits the refactor. No new behavior — only structural split.
 3. Parent runs the umbrella. Must be green before and green after. If it regresses, the split introduced a bug; fix before proceeding.
 4. Parent re-emits briefs against the new sub-files. Each sub-file maps cleanly to one leaf.
@@ -122,7 +122,7 @@ The prep step is the parent's move, not the leaf's. No leaf may restructure a fi
 
 ### Seam-axis commitment
 
-The split seam chosen in a prep step (by op kind, by strategy, by module boundary, by contact type) is an architectural commitment. Changing seams later costs a re-restructuring pass. Before committing, ask:
+The split seam chosen in a prep step (by function, by module, by feature, by data type) is an architectural commitment. Changing seams later costs a re-restructuring pass. Before committing, ask:
 - Is this axis stable through the next few waves of work?
 - Does the axis map to a stable dimension of the spec (e.g., the strategy doc's taxonomy) rather than to the current wave's AC list?
 - Will new features add new slices along this axis, or cross-cut it?

@@ -141,7 +141,7 @@ Produce a single report with this structure. Do **not** revert or re-merge unila
 
 ## Summary
 - Total assumptions logged: N
-- Flagged: M (1=contradicts-spec, 2=contradicts-bible, 3=cross-leaf, 4=fabricated, 5=compounded)
+- Flagged: M (1=contradicts-spec, 2=contradicts-strategy-doc, 3=cross-leaf, 4=fabricated, 5=compounded)
 - Unflagged: N-M (recorded for transparency, no drift detected)
 
 ## Flagged entries

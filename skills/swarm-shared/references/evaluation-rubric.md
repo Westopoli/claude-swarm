@@ -45,12 +45,12 @@ Future iterations must include at least one eval in **each** of these categories
 - Baseline: likely opens `src/` and starts writing the impl directly.
 - Measure: count of `src/` writes during the run. Pass = 0.
 
-### C. Bible-drift detection (`/swarm` spec-gate)
+### C. Strategy-doc drift detection (`/swarm` spec-gate)
 
 - `docs/strategy.md` says one thing (e.g., "all aggregation in SQL").
 - `specs/wave-N.md` violates it (e.g., "use Python pandas for the aggregator").
 - With_skill must **report the contradiction with both quotes side-by-side** and halt at spec-gate.
-- Baseline likely produces "spec looks compliant" without quoting either doc — the original wave-1 disaster mode.
+- Baseline likely produces "spec looks compliant" without quoting either doc — the failure mode this skill exists to prevent.
 
 ### D. Cascade-mistake leak-through (`/swarm-merge`)
 
