@@ -1,11 +1,13 @@
 ---
 name: swarm-merge
-description: Run the post-leaf merge protocol after a TDD-cascade leaf agent reports green. Use whenever the user says "merge this leaf", "leaf-NN is done, integrate it", "the agent reports green", "bring this back into main", "run the umbrella after this branch", or any time a leaf finishes and its two-file diff is ready to land. Also use when the user says "merge all leaves", "merge the queue", "process all pending", or wants to merge multiple leaves at once — invoke queue mode (/swarm-merge queue) which pre-validates all leaves in parallel then merges sequentially with a full umbrella run per leaf. This skill verifies staged files are exactly two (neither parent-owned), runs the umbrella pre and post, checks per-test regressions by name, and restores the originals if the umbrella regresses. Always use this in place of an ad-hoc file copy for leaf work — ad-hoc copies silently re-introduce the failure modes the cascade prevents.
+description: Run the post-leaf merge protocol after a TDD-cascade leaf agent reports green. Use whenever the user says "merge this leaf", "leaf-NN is done, integrate it", "the agent reports green", "bring this back into main", "run the umbrella after this branch", or any time a leaf finishes and its staged diff is ready to land. Also use when the user says "merge all leaves", "merge the queue", "process all pending", or wants to merge multiple leaves at once — invoke queue mode (/swarm-merge queue) which pre-validates all leaves in parallel then merges sequentially with a full umbrella run per leaf. This skill verifies the staged files exactly match the brief's declared `test_files` + `impl_files` (none parent-owned), runs the umbrella pre and post, checks per-test regressions by name, and restores the originals if the umbrella regresses. Always use this in place of an ad-hoc file copy for leaf work — ad-hoc copies silently re-introduce the failure modes the cascade prevents.
 ---
 
 # /swarm-merge — post-leaf merge protocol
 
-A leaf finished. Its two files sit in `.swarm/pending/leaf-NN/`. This skill validates the staged files, copies them to their destinations, runs the umbrella, and either finalises or reverts by restoring from backup. No git commands are issued. All state lives in `.swarm/`.
+A leaf finished. Its staged files sit in `.swarm/pending/leaf-NN/`. This skill validates the staged files against the brief, copies them to their destinations, runs the umbrella, and either finalises or reverts by restoring from backup. No git commands are issued. All state lives in `.swarm/`.
+
+A leaf brief declares its file footprint via plural `test_files` and `impl_files` frontmatter (typically one test + one impl, but a leaf may own multiple files if the brief explicitly lists them). The staging directory must match that declaration exactly — same count, same paths.
 
 The companion theory lives at `~/.claude/skills/swarm-shared/references/playbook.md`.
 
@@ -20,16 +22,16 @@ The companion theory lives at `~/.claude/skills/swarm-shared/references/playbook
     leaf-NN.ASSUMPTIONS.md      ← leaf's assumption log (if any inferences made)
   pending/
     leaf-NN/
-      <test_file path>          ← leaf's test file, mirroring dest path from root
-      <impl_file path>          ← leaf's impl file, mirroring dest path from root
+      <test_files[*] path>      ← leaf's test files, mirroring dest paths from root
+      <impl_files[*] path>      ← leaf's impl files, mirroring dest paths from root
   backups/
     leaf-NN/
-      <test_file path>          ← original before copy (written by skill at step 4)
-      <impl_file path>
+      <test_files[*] path>      ← originals before copy (written by skill at step 6)
+      <impl_files[*] path>
   merge-log.md                  ← append-only audit trail; skill writes, never human
 ```
 
-Leaf agents are instructed (via their brief) to write output to `.swarm/pending/leaf-NN/` using paths that mirror the destination from the project root. Example: if `impl_file` is `src/cache.py`, the staged file lives at `.swarm/pending/leaf-03/src/cache.py`.
+Leaf agents are instructed (via their brief) to write output to `.swarm/pending/leaf-NN/` using paths that mirror the destination from the project root. Example: if `impl_files` contains `src/cache.py`, the staged file lives at `.swarm/pending/leaf-03/src/cache.py`.
 
 ---
 
@@ -65,7 +67,7 @@ Before touching staging, verify every prior leaf in `briefs_dir` was gated throu
 - Any prior leaf_id absent from `merge-log.md` is a bypass — it was never gated.
 - If any bypass found, print **before continuing**:
 
-> ⚠ BYPASS DETECTED: `leaf-NN` has a brief in `briefs_dir` but no entry in `merge-log.md`. It was never gated through this protocol. The two-file rule, parent-owned check, and umbrella were never verified for it. Confirm whether to audit it now or accept the risk before proceeding.
+> ⚠ BYPASS DETECTED: `leaf-NN` has a brief in `briefs_dir` but no entry in `merge-log.md`. It was never gated through this protocol. The file-match rule, parent-owned check, and umbrella were never verified for it. Confirm whether to audit it now or accept the risk before proceeding.
 
 Do not silently continue past a detected bypass.
 
@@ -81,27 +83,34 @@ Do not silently continue past a detected bypass.
 
 > Staging directory `.swarm/pending/leaf-NN/` not found or empty. Leaf must write its output there before this skill runs.
 
-### 2. Two-file rule
+### 2. File-match rule
 
-The staging directory **must** contain exactly two files:
-- One test file.
-- One impl file.
+Read the brief at `<briefs_dir>/leaf-NN.md`. Take the union of its `test_files` and `impl_files` frontmatter lists (both are plural lists; a list of one is fine). Call this set `declared`.
 
-If it contains more, or fewer, or one of either kind:
+The staging directory **must** contain exactly the files in `declared` — same count, same paths (relative to project root). No extras, no missing, no renames.
 
-> **Reject.** Staging contains N files (`a`, `b`, `c`). A leaf owns exactly one test + one impl. Send the agent back; do not merge.
+- **Count mismatch:**
 
-**Parent-owned check (G1):** Even when count = 2, verify neither file matches a glob in `parent_owned` from `.claude-swarm.toml`. A leaf that staged a parent-owned file passed the count gate but violated ownership.
+> **Reject.** Staging contains N files; brief declares M (`test_files` + `impl_files`). Leaf cannot add or drop files relative to its brief. Send the agent back; do not merge.
+
+- **Path mismatch (same count, different paths):**
+
+> **Reject.** Staged file `<path>` is not in the brief's declared footprint. Leaf cannot rename or relocate files. Send the agent back.
+
+Most leaves declare one test + one impl. A leaf may declare multiple files only if its brief explicitly lists them — `/swarm-review` is what authorises that shape; `/swarm-merge` enforces it. The cascade invariant is "no surprise files at merge", not literally "two files".
+
+**Parent-owned check (G1):** After the file-match check passes, verify **no** staged file matches a glob in `parent_owned` from `.claude-swarm.toml`. Run this per-file across every staged path.
 
 > **Reject.** `<file>` matches parent-owned glob `<glob>`. Leaf cannot touch parent territory. Send the agent back.
 
 This is non-negotiable. A leaf that needed to touch a parent-owned file made a design decision the cascade explicitly forbids. The right fix is escalating to the parent for a contract change.
 
-### 3. Confirm staged files match the brief
+### 3. Brief frontmatter sanity
 
-- Read the brief at `<briefs_dir>/leaf-NN.md`.
-- The staging directory's two files must equal the brief's `test_file` and `impl_file` paths exactly (relative to project root).
-- Path mismatch → reject. The leaf cannot rename or relocate files.
+The file-match check in step 2 already validates staging against the brief. Step 3 is a cheap sanity pass on the brief itself:
+
+- If `test_files` or `impl_files` is missing, empty, or non-list → reject. The brief is malformed; the cascade cannot enforce ownership against an unspecified footprint.
+- If any path in either list is absolute, escapes the project root (`..`), or duplicates a path in the other list → reject. Footprints must be unambiguous, project-relative paths.
 
 ### 4. ASSUMPTIONS file check (G2)
 
@@ -121,8 +130,8 @@ This is non-negotiable. A leaf that needed to touch a parent-owned file made a d
 
 ### 6. Copy staged files + run umbrella post-merge
 
-- Snapshot the current versions of `test_file` and `impl_file` to `.swarm/backups/leaf-NN/`, mirroring destination paths. These are the restore targets if regression is detected.
-- Copy `.swarm/pending/leaf-NN/<test_file>` → `<test_file>` and `.swarm/pending/leaf-NN/<impl_file>` → `<impl_file>`.
+- For **every** path in the brief's `test_files` + `impl_files`: if a file currently exists at that path, snapshot it to `.swarm/backups/leaf-NN/<path>` (mirroring the destination layout). If no file exists at the destination yet (new file), record that fact — the revert step will delete it instead of restoring.
+- For **every** staged file under `.swarm/pending/leaf-NN/`: copy it to its destination path. Every declared file must be copied; no partial merges.
 - Run `umbrella_test_cmd` again (post-merge state).
 - Capture `post_passing_tests` and `post_count`.
 - **Brief acceptance gate (G7):** Parse `<briefs_dir>/leaf-NN.md` for an `## Acceptance` block. If a test command is specified, run it as a second independent gate. Both umbrella and brief acceptance command must pass. If no acceptance block: render `step 6: brief acceptance gate skipped (no Acceptance block in brief)`.
@@ -172,10 +181,10 @@ This step runs after the post-merge umbrella and before the merge decision.
 |---------|-------|-------|-----------|--------|
 ```
 
-- Append one row:
+- Append one row. List every file in `impl_files` + `test_files`, comma-separated:
 
 ```
-| leaf-NN | <impl_file>, <test_file> | +N | <ISO timestamp> | clean |
+| leaf-NN | <impl_files[*]>, <test_files[*]> | +N | <ISO timestamp> | clean |
 ```
 
   The log is append-only. Never edit, reorder, or delete entries. The bypass check in step 0.5 depends on the log being an accurate, ordered record of every gated merge. Integrity is verified by the header presence and timestamp ordering.
@@ -184,12 +193,13 @@ This step runs after the post-merge umbrella and before the merge decision.
 
 ### 8b. Revert
 
-- Restore originals from `.swarm/backups/leaf-NN/` → overwrite `<test_file>` and `<impl_file>`.
+- For every backup under `.swarm/backups/leaf-NN/`: overwrite the matching destination path with the backup contents.
+- For every declared file that did **not** have a backup (new file, recorded in step 6): delete it from the destination tree.
 - Delete `.swarm/pending/leaf-NN/` (staging consumed — leaf must re-stage if it tries again).
 - Append to `merge-log.md`:
 
 ```
-| leaf-NN | <impl_file>, <test_file> | REVERTED | <ISO timestamp> | regression: <test-name> |
+| leaf-NN | <impl_files[*]>, <test_files[*]> | REVERTED | <ISO timestamp> | regression: <test-name> |
 ```
 
 - Append a `## Merge regression` block to `<briefs_dir>/leaf-NN.md` noting which test regressed and what the staged diff did.
@@ -217,15 +227,15 @@ Before any files are copied, validate every leaf under `.swarm/pending/` simulta
 
 - **Step 0.5 bypass check (queue-aware):** A bypass is a leaf whose brief exists, whose NN is less than the smallest NN in the current queue, and that has no pending dir AND no merge-log entry. A leaf currently in the queue is not a bypass — it is staged and waiting. Flag genuine bypasses before proceeding.
 - **Step 1** — staging dir exists and non-empty
-- **Step 2** — two-file rule + G1 parent-owned check
-- **Step 3** — brief match
+- **Step 2** — file-match rule (staged set equals brief's `test_files` + `impl_files`) + G1 parent-owned check per-file
+- **Step 3** — brief frontmatter sanity (`test_files`/`impl_files` present, well-formed, project-relative, non-overlapping)
 - **Step 4** — G2 ASSUMPTIONS file check
 
 Collect all failures across all leaves. If any leaf fails pre-validation:
 
 > Pre-validation failed for N leaves:
 > - leaf-07: tests/umbrella_extended.py matches parent-owned glob tests/umbrella*.py
-> - leaf-12: staged impl_file does not match brief (src/foo.py ≠ src/bar.py)
+> - leaf-12: staged file does not match brief footprint (src/foo.py not in declared impl_files/test_files)
 > - leaf-19: staging directory empty
 >
 > Fix all failures before re-running /swarm-merge queue. No files have been copied.
@@ -265,7 +275,7 @@ Total delta: +N assertions
 ## What this skill must not do
 
 - Edit `merge-log.md` except by appending. Never reorder, correct, or remove entries. The log's integrity is the only tamper-detection mechanism.
-- Copy files outside of the staging-to-destination path. Skill touches exactly two destination files per run.
+- Copy files outside of the staging-to-destination path. Skill touches exactly the destination files declared in the brief's `test_files` + `impl_files` — no more, no fewer.
 - Skip the umbrella run because "the change is small." Every merge runs the umbrella.
 - Merge multiple leaves under a single umbrella run. Queue mode runs one umbrella per leaf — that per-leaf attribution is the point. Never collapse multiple leaves into one umbrella pass.
 - Proceed past a bypass warning without explicit user confirmation.
