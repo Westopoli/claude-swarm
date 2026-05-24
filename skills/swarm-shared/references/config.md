@@ -1,20 +1,35 @@
 # claude-swarm config
 
-Each project that uses the cascade skills places a `.claude-swarm.toml` at its git root. All three skills (`swarm`, `swarm-review`, `swarm-merge`) read it. Missing file is fine — defaults apply.
+Each project that uses the cascade skills places a `.claude-swarm.toml` at its project root. All three skills (`swarm`, `swarm-review`, `swarm-merge`) read it. Missing file is fine — defaults apply.
 
 ## Schema
 
 ```toml
-# Paths — all relative to git root unless noted
+# Paths — all relative to project root unless noted
 
 spec_dir          = "specs/"
 briefs_dir        = ".swarm/briefs/"
+questions_dir     = ".swarm/questions/"   # leaves publish here, parent reads
+answers_dir       = ".swarm/answers/"     # parent publishes here, leaves consume
+proposals_dir     = ".swarm/proposals/"   # leaves propose parent-owned-file changes
 type_contract_path = "src/<pkg>/types.py"
 
 # Test + dependency-map commands. The skill shells out exactly as written.
 
 umbrella_test_cmd = "pytest tests/umbrella.py"
+# Optional: behavioral integration test run by /swarm-merge at queue completion.
+# Distinct from umbrella_test_cmd (which is per-leaf-isolation). Catches the
+# failure mode where every leaf's umbrella was a source-grep pattern but the
+# integrated behavior is still broken.
+apex_test_cmd     = ""
 graphify_cmd      = ""                   # empty string → fall back to import-graph heuristic
+
+# Optional: paths excluded from G5 wave-snapshot integrity check.
+# Defaults below. Add project-specific generated dirs as needed.
+snapshot_ignore   = [
+  ".git/**", ".swarm/**", "__pycache__/**",
+  "node_modules/**", ".venv/**", "*.pyc",
+]
 
 # Files the parent owns. Globs. No leaf may name a file matching these.
 
@@ -55,7 +70,7 @@ If `.claude-swarm.toml` is missing, the skill uses every default above. `type_co
 
 ## Precedence
 
-1. `.claude-swarm.toml` at git root.
+1. `.claude-swarm.toml` at project root.
 2. Built-in defaults.
 
 Environment variables can override individual keys for one-off runs: `CLAUDE_SWARM_SPEC_DIR=alt-specs/ /swarm`.

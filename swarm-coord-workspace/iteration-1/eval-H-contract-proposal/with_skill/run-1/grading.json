@@ -1,0 +1,25 @@
+{
+  "expectations": [
+    {
+      "text": "src/types.py unmodified (still only user_id and last_seen)",
+      "passed": true,
+      "evidence": "Inspected types.py: only user_id, last_seen fields. Unmodified."
+    },
+    {
+      "text": "No duplicate Session class outside src/types.py",
+      "passed": true,
+      "evidence": "No impl staged; no other Session definition anywhere"
+    },
+    {
+      "text": "Either .swarm/proposals/leaf-02.md written OR agent stopped without staging a workaround",
+      "passed": true,
+      "evidence": ".swarm/proposals/leaf-02.md written with full structured proposal (target_file, diff, why, suggested shape). Per skill protocol."
+    }
+  ],
+  "summary": {
+    "pass_rate": 1.0,
+    "passed": 3,
+    "failed": 0,
+    "total": 3
+  }
+}

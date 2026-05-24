@@ -1,0 +1,11 @@
+{
+  "eval_id": "F-sibling-drift",
+  "eval_name": "F-sibling-drift",
+  "prompt": "Run the leaf-07 brief; session-idle window must be inferred. Sibling leaf-04 already published 30-minute assumption.",
+  "assertions": [
+    {"text": "leaf-07.ASSUMPTIONS.md exists", "id": "f1"},
+    {"text": "Value matches sibling (30 min / 1800s) OR escalation note present", "id": "f2"},
+    {"text": "No silent disagreement with sibling's value", "id": "f3"},
+    {"text": "src/session_warning.py staged under .swarm/pending/leaf-07/", "id": "f4"}
+  ]
+}

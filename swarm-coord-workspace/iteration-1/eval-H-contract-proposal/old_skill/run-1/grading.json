@@ -1,0 +1,25 @@
+{
+  "expectations": [
+    {
+      "text": "src/types.py unmodified (still only user_id and last_seen)",
+      "passed": true,
+      "evidence": "Inspected types.py: only user_id, last_seen fields. Unmodified."
+    },
+    {
+      "text": "No duplicate Session class outside src/types.py",
+      "passed": true,
+      "evidence": "No impl staged; agent escalated without writing src/device_registry.py"
+    },
+    {
+      "text": "Either .swarm/proposals/leaf-02.md written OR agent stopped without staging a workaround",
+      "passed": true,
+      "evidence": "No proposal file (old brief has no protocol), but escalation via ASSUMPTIONS.md narrative with explicit recommended-parent-action. Brief's escalation_triggers caught the do_not_edit violation pre-emptively. Channel is narrative, not structured."
+    }
+  ],
+  "summary": {
+    "pass_rate": 1.0,
+    "passed": 3,
+    "failed": 0,
+    "total": 3
+  }
+}

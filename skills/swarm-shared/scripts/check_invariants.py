@@ -20,7 +20,6 @@ from __future__ import annotations
 import argparse
 import fnmatch
 import re
-import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -91,14 +90,12 @@ class Report:
 # ---------- io ----------
 
 def git_root(start: Path) -> Path:
-    try:
-        out = subprocess.run(
-            ["git", "-C", str(start), "rev-parse", "--show-toplevel"],
-            capture_output=True, text=True, check=True,
-        )
-        return Path(out.stdout.strip())
-    except subprocess.CalledProcessError:
-        return start
+    """Walk up from start looking for .claude-swarm.toml; fall back to start."""
+    current = start.resolve()
+    for parent in [current, *current.parents]:
+        if (parent / ".claude-swarm.toml").exists():
+            return parent
+    return start
 
 
 def load_config(root: Path) -> dict[str, Any]:
@@ -393,7 +390,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--briefs-dir", type=Path,
         help="path to briefs dir; default from .claude-swarm.toml")
     p.add_argument("--root", type=Path, default=Path.cwd(),
-        help="project root (defaults to git root of cwd)")
+        help="project root (defaults to cwd; walks up looking for .claude-swarm.toml)")
     args = p.parse_args(argv)
 
     root = git_root(args.root)

@@ -1,0 +1,11 @@
+[swarm]
+project_root = "."
+briefs_dir = ".swarm/briefs"
+pending_dir = ".swarm/pending"
+questions_dir = ".swarm/questions"
+answers_dir = ".swarm/answers"
+proposals_dir = ".swarm/proposals"
+
+[run]
+test_cmd = "pytest -x"
+umbrella_cmd = "pytest tests/umbrella_test.py"

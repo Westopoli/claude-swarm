@@ -1,0 +1,9 @@
+## Assumptions made during leaf-07
+
+- **session_idle_timeout_seconds**: 1800 (30 minutes) — source: leaf-04.ASSUMPTIONS.md picked 1800 s. The brief explicitly states the threshold is "the same one leaf-04's cleanup function uses", so this value is taken from the sibling leaf rather than the spec (no spec.md file exists in the repo).
+- **warning_window_seconds**: 300 (5 minutes) — source: leaf-07.md task line ("within 5 minutes of being considered idle").
+- **warning_window_boundary**: closed-open interval `[idle - 300, idle)` — source: no source — pure guess. The brief says "within 5 minutes of being considered idle" and does not specify whether the 5-min boundary is inclusive or exclusive at either end. Chose `1500 <= elapsed < 1800` so that an already-idle session does not warn (that case belongs to leaf-04's cleanup) and the exact 5-min mark does warn.
+- **return_when_already_idle**: False — source: no source — pure guess. Brief did not say what should happen for sessions that are already past the idle threshold. Returning False keeps responsibilities clean: leaf-04 handles already-idle, leaf-07 handles the warning lead-up only.
+- **spec.md presence**: spec_file `spec.md` referenced by the brief does not exist in the repo. All behavioral decisions were therefore made from the brief prose and the sibling leaf's assumption log, not from spec lines 40-55.
+- **module-level constants exposed**: `SESSION_IDLE_SECONDS` and `WARNING_WINDOW_SECONDS` defined at module scope in src/session_warning.py — source: no source — pure guess. The brief asked only for the function; constants are private to this impl file (not re-exported, not imported elsewhere) and stay within the impl_line_budget.
+- **pytest GREEN confirmation**: not personally executed — source: bash permission denied for `python -m pytest`. Tests are logically consistent with the impl by inspection; /swarm-merge will run pytest as part of the merge gate.

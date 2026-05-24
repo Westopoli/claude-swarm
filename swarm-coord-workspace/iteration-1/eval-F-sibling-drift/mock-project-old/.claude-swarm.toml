@@ -1,0 +1,10 @@
+spec_dir = "specs/"
+briefs_dir = ".swarm/briefs/"
+type_contract_path = "src/types.py"
+umbrella_test_cmd = "pytest -x"
+
+parent_owned = ["src/types.py", "tests/conftest.py", "tests/umbrella*.py"]
+
+[invariants]
+max_impl_lines = 200
+max_test_assertions = 20

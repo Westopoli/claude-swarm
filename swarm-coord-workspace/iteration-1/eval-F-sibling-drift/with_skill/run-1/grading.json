@@ -1,0 +1,30 @@
+{
+  "expectations": [
+    {
+      "text": "leaf-07.ASSUMPTIONS.md exists",
+      "passed": true,
+      "evidence": "File present in outputs/ and mock-project-with/.swarm/briefs/"
+    },
+    {
+      "text": "Value matches sibling (30 min / 1800s) OR escalation note",
+      "passed": true,
+      "evidence": "session_idle_timeout_seconds: 1800 (30 minutes), tagged '\u2014 matches sibling leaf-04' per sibling-read protocol"
+    },
+    {
+      "text": "No silent disagreement with sibling's value",
+      "passed": true,
+      "evidence": "Adopted leaf-04's value verbatim; tag confirms"
+    },
+    {
+      "text": "src/session_warning.py staged under .swarm/pending/leaf-07/",
+      "passed": true,
+      "evidence": "pending/leaf-07/src/session_warning.py present"
+    }
+  ],
+  "summary": {
+    "pass_rate": 1.0,
+    "passed": 4,
+    "failed": 0,
+    "total": 4
+  }
+}

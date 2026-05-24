@@ -10,13 +10,13 @@
 
 A Claude Code skill pack that lets you run many AI sub-agents in parallel without the usual failure modes: overlapping file edits, silent design decisions, oversized tasks, regressions slipping past merge.
 
-Three slash commands. Three safety nets.
+Three slash commands. A dozen layered gates. One tree-shaped cascade.
 
 | Command | What it does |
 |---|---|
-| `/swarm` | Plans the work: reads your requirements, writes a single failing test that defines "done", emits one task description per sub-agent. |
-| `/swarm-review` | Audits the task descriptions before any sub-agent starts. Blocks if two would edit the same file, if any task contains ambiguous design language, or if a task is oversized. |
-| `/swarm-merge` | Lands each sub-agent's work safely. Verifies staged files are exactly two (one impl + one test), reruns the umbrella test, reverts if anything regresses. |
+| `/swarm` | Plans the work: reads your requirements, writes a single failing umbrella test that defines "done", checks the umbrella for behavioral strength (not source-grep), emits one task description per sub-agent. |
+| `/swarm-review` | Audits task descriptions before any sub-agent starts. Blocks on overlap, ambiguous design language, oversize, and unverified codebase-state claims (`verify:` commands on briefs). |
+| `/swarm-merge` | Lands each sub-agent's work safely. Runs ten gates per merge (G1–G7 + ASSUMPTIONS + bypass + apex) and reverts if the umbrella regresses. See [Gate reference](#gate-reference). |
 
 ---
 
@@ -118,9 +118,42 @@ The load-bearing evals are B and E: real time gets lost when those gates get ski
 1. **Define "done".** Write one failing test that captures what the wave needs to achieve. Without this, the workflow has nothing to anchor to.
 2. **Plan the sub-tasks.** `/swarm` interviews you briefly, then writes one task description per sub-agent. Each task owns exactly one test file + one impl file.
 3. **Audit before spawning.** `/swarm-review` runs the audit script. Any failure blocks the workflow — you cannot proceed to step 4 with a failing audit.
-4. **Spawn sub-agents in parallel.** One agent per task description. They run independently with no need for cross-agent coordination.
+4. **Spawn sub-agents in parallel.** One agent per task description. They never message each other directly — all coordination is file-mediated and parent-arbitrated (see [Coordination model](#coordination-model) below).
 5. **Merge each finished sub-agent.** `/swarm-merge` checks staged files, reruns the umbrella test, reverts on regression.
 6. **Sweep assumptions.** When everything's green, the parent sweeps every sub-agent's assumption log for drift. Anything that contradicts the requirements or shared types surfaces as a flagged entry with a suggested patch.
+
+## Coordination model
+
+The cascade is a tree: parent at root, leaves at fringe, no edges between leaves. Direct leaf-to-leaf messaging would turn the cascade into a graph and destroy regression attribution. But leaves do sometimes need to coordinate. Three file-mediated patterns let them — without breaking the tree shape:
+
+| Pattern | What | Where it fires |
+|---|---|---|
+| **Sibling-ASSUMPTIONS read** | Leaves read (never write) other leaves' `.ASSUMPTIONS.md` before logging their own. Catches drift at leaf-time instead of merge-time. | Leaf brief boilerplate |
+| **Question ledger** | Leaf publishes `.swarm/questions/leaf-NN-Q<n>.md` instead of inferring silently. Parent answers asynchronously in `.swarm/answers/`. | `/swarm-merge` **G3** gate enforces resolution |
+| **Contract proposals** | Leaf publishes `.swarm/proposals/leaf-NN.md` instead of editing parent-owned files. Parent applies + accepts. | `/swarm-merge` **G4** gate verifies application |
+
+What's intentionally **not** built: direct leaf-to-leaf messaging, shared mutable state, synchronous waits, cross-leaf impl reads from `.swarm/pending/`. Each would re-introduce a failure mode the cascade exists to prevent.
+
+## Gate reference
+
+Every safety net is a numbered gate. Each runs at a specific point in the workflow.
+
+| Gate | What | Skill |
+|---|---|---|
+| `non-overlap` | No two briefs name the same impl file. | `/swarm-review` |
+| `no-design` | No ambiguous verbs in task prose; no symbols outside the locked contract. | `/swarm-review` |
+| `sizing` | Impl/test budgets within configured caps. | `/swarm-review` |
+| `codebase-preconditions` | `verify:` commands on briefs that claim codebase state pass. | `/swarm-review` |
+| `weak-umbrella` heuristic | Umbrella test asserts on *behavior*, not source-grep. | `/swarm` step 4 |
+| `G1` parent-owned | No staged file matches `parent_owned` globs. | `/swarm-merge` |
+| `G2` ASSUMPTIONS | Inferences are logged, not buried. | `/swarm-merge` |
+| `G3` open-question | Every published question has an answer or `unanswered: true` ack. | `/swarm-merge` |
+| `G4` contract-proposal | No `pending` proposals; `accepted` proposals are actually applied. | `/swarm-merge` |
+| `G5` wave-snapshot integrity | No file outside the leaf's footprint changed since wave start. | `/swarm-merge` |
+| `G6` escalation-trigger | Any brief-declared `detect:` command that matches requires a filed escalation. | `/swarm-merge` |
+| `G7` wave-sweep | Parent's aggregate assumption-sweep ran before first merge of wave. | `/swarm-merge` |
+| `apex-test` | Behavioral integration test passes after all leaves of the queue merge. | `/swarm-merge` queue completion |
+| `bypass-detection` | Every prior leaf was gated through `/swarm-merge`; no leaf landed without audit. | `/swarm-merge` |
 
 ## Install
 

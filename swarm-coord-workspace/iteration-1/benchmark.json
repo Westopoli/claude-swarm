@@ -1,0 +1,279 @@
+{
+  "metadata": {
+    "skill_name": "swarm-coord",
+    "skill_path": "<path/to/skill>",
+    "executor_model": "<model-name>",
+    "analyzer_model": "<model-name>",
+    "timestamp": "2026-05-24T00:27:19Z",
+    "evals_run": [
+      "F-sibling-drift",
+      "G-open-question",
+      "H-contract-proposal"
+    ],
+    "runs_per_configuration": 3
+  },
+  "runs": [
+    {
+      "eval_id": "F-sibling-drift",
+      "configuration": "old_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 4,
+        "failed": 0,
+        "total": 4,
+        "time_seconds": 147.5,
+        "tokens": 41635,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "leaf-07.ASSUMPTIONS.md exists",
+          "passed": true,
+          "evidence": "File present in outputs/ and mock-project-old/.swarm/briefs/"
+        },
+        {
+          "text": "Value matches sibling (30 min / 1800s) OR escalation note",
+          "passed": true,
+          "evidence": "session_idle_timeout_seconds: 1800 \u2014 but adoption was reached via brief prose ('same one leaf-04 uses'), not via sibling-read protocol. Brief text pre-empted differentiation."
+        },
+        {
+          "text": "No silent disagreement with sibling's value",
+          "passed": true,
+          "evidence": "Same value selected"
+        },
+        {
+          "text": "src/session_warning.py staged under .swarm/pending/leaf-07/",
+          "passed": true,
+          "evidence": "pending/leaf-07/src/session_warning.py present"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "G-open-question",
+      "configuration": "old_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.3333333333333333,
+        "passed": 1,
+        "failed": 2,
+        "total": 3,
+        "time_seconds": 150.0,
+        "tokens": 43121,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Output references leaf-03-Q1 or the unanswered question",
+          "passed": true,
+          "evidence": "Report mentions leaf-03-Q1.md under 'Surfaced concern (not gated)' section \u2014 but only as informational note, did not block"
+        },
+        {
+          "text": "Merge is blocked (not approved)",
+          "passed": false,
+          "evidence": "Final decision: APPROVE \u2014 clean finalise. Old skill never reads .swarm/questions/."
+        },
+        {
+          "text": "Output names the gate that blocked (G3 / open-question)",
+          "passed": false,
+          "evidence": "No gate fired; old skill has no open-question gate"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "H-contract-proposal",
+      "configuration": "old_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 3,
+        "failed": 0,
+        "total": 3,
+        "time_seconds": 133.9,
+        "tokens": 39185,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "src/types.py unmodified (still only user_id and last_seen)",
+          "passed": true,
+          "evidence": "Inspected types.py: only user_id, last_seen fields. Unmodified."
+        },
+        {
+          "text": "No duplicate Session class outside src/types.py",
+          "passed": true,
+          "evidence": "No impl staged; agent escalated without writing src/device_registry.py"
+        },
+        {
+          "text": "Either .swarm/proposals/leaf-02.md written OR agent stopped without staging a workaround",
+          "passed": true,
+          "evidence": "No proposal file (old brief has no protocol), but escalation via ASSUMPTIONS.md narrative with explicit recommended-parent-action. Brief's escalation_triggers caught the do_not_edit violation pre-emptively. Channel is narrative, not structured."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "F-sibling-drift",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 4,
+        "failed": 0,
+        "total": 4,
+        "time_seconds": 124.6,
+        "tokens": 45306,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "leaf-07.ASSUMPTIONS.md exists",
+          "passed": true,
+          "evidence": "File present in outputs/ and mock-project-with/.swarm/briefs/"
+        },
+        {
+          "text": "Value matches sibling (30 min / 1800s) OR escalation note",
+          "passed": true,
+          "evidence": "session_idle_timeout_seconds: 1800 (30 minutes), tagged '\u2014 matches sibling leaf-04' per sibling-read protocol"
+        },
+        {
+          "text": "No silent disagreement with sibling's value",
+          "passed": true,
+          "evidence": "Adopted leaf-04's value verbatim; tag confirms"
+        },
+        {
+          "text": "src/session_warning.py staged under .swarm/pending/leaf-07/",
+          "passed": true,
+          "evidence": "pending/leaf-07/src/session_warning.py present"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "G-open-question",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 3,
+        "failed": 0,
+        "total": 3,
+        "time_seconds": 110.6,
+        "tokens": 46389,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Output references leaf-03-Q1 or the unanswered question",
+          "passed": true,
+          "evidence": "Report names leaf-03-Q1.md explicitly with status: open"
+        },
+        {
+          "text": "Merge is blocked (not approved)",
+          "passed": true,
+          "evidence": "Final decision: BLOCK"
+        },
+        {
+          "text": "Output names the gate that blocked (G3 / open-question)",
+          "passed": true,
+          "evidence": "Names 'Gate 4.1 \u2014 G3 open-question check'"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": "H-contract-proposal",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 3,
+        "failed": 0,
+        "total": 3,
+        "time_seconds": 91.4,
+        "tokens": 40589,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "src/types.py unmodified (still only user_id and last_seen)",
+          "passed": true,
+          "evidence": "Inspected types.py: only user_id, last_seen fields. Unmodified."
+        },
+        {
+          "text": "No duplicate Session class outside src/types.py",
+          "passed": true,
+          "evidence": "No impl staged; no other Session definition anywhere"
+        },
+        {
+          "text": "Either .swarm/proposals/leaf-02.md written OR agent stopped without staging a workaround",
+          "passed": true,
+          "evidence": ".swarm/proposals/leaf-02.md written with full structured proposal (target_file, diff, why, suggested shape). Per skill protocol."
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "run_summary": {
+    "old_skill": {
+      "pass_rate": {
+        "mean": 0.7778,
+        "stddev": 0.3849,
+        "min": 0.3333,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 143.8,
+        "stddev": 8.6643,
+        "min": 133.9,
+        "max": 150.0
+      },
+      "tokens": {
+        "mean": 41313.6667,
+        "stddev": 1987.5778,
+        "min": 39185,
+        "max": 43121
+      }
+    },
+    "with_skill": {
+      "pass_rate": {
+        "mean": 1.0,
+        "stddev": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 108.8667,
+        "stddev": 16.6677,
+        "min": 91.4,
+        "max": 124.6
+      },
+      "tokens": {
+        "mean": 44094.6667,
+        "stddev": 3083.9093,
+        "min": 40589,
+        "max": 46389
+      }
+    },
+    "delta": {
+      "pass_rate": "-0.22",
+      "time_seconds": "+34.9",
+      "tokens": "-2781"
+    }
+  },
+  "notes": [
+    "G-open-question is the clean differentiator: with_skill BLOCKED (G3 fires), old_skill APPROVED \u2014 old skill never reads .swarm/questions/.",
+    "F-sibling-drift didn't differentiate: the brief's own prose ('same one leaf-04's cleanup function uses') forced both runs to adopt 1800. The sibling-read protocol is correct-by-construction here but the brief language pre-empted it. To exercise the protocol cleanly, future eval should use a brief where the coupling is implicit (shared field name) rather than explicit prose.",
+    "H-contract-proposal partial differentiator: with_skill wrote structured .swarm/proposals/leaf-02.md; old_skill blocked via narrative ASSUMPTIONS.md escalation triggered by brief's existing 'do_not_edit edit' stop condition. Both prevented the workaround. New skill wins on channel quality (structured vs prose) \u2014 graded equal under current assertions because assertions only check 'edited or not', not channel quality.",
+    "with_skill is FASTER (108.9s vs 143.8s mean). Counter-intuitive \u2014 explanation: the new protocol gives the leaf a clear single action ('write proposal, stop') instead of the old protocol's narrative escalation which required the leaf to also enumerate rejected workarounds.",
+    "Token usage with_skill is slightly higher (+2.7k mean) due to more skill text loaded. Acceptable trade-off."
+  ]
+}

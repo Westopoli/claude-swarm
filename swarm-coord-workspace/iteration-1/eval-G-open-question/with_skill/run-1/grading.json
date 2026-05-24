@@ -1,0 +1,25 @@
+{
+  "expectations": [
+    {
+      "text": "Output references leaf-03-Q1 or the unanswered question",
+      "passed": true,
+      "evidence": "Report names leaf-03-Q1.md explicitly with status: open"
+    },
+    {
+      "text": "Merge is blocked (not approved)",
+      "passed": true,
+      "evidence": "Final decision: BLOCK"
+    },
+    {
+      "text": "Output names the gate that blocked (G3 / open-question)",
+      "passed": true,
+      "evidence": "Names 'Gate 4.1 \u2014 G3 open-question check'"
+    }
+  ],
+  "summary": {
+    "pass_rate": 1.0,
+    "passed": 3,
+    "failed": 0,
+    "total": 3
+  }
+}

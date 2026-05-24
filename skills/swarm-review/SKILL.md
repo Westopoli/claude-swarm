@@ -34,15 +34,33 @@ Record an assumption log at `<briefs_dir>/REVIEW_ASSUMPTIONS.md` listing every i
 
 ### 1. Run the check script
 
-From the project's git root, run:
+From the project root, run:
 
 ```bash
 python ~/.claude/skills/swarm-shared/scripts/check_invariants.py
 ```
 
-Optional: `--briefs-dir <path>` to override config, `--root <path>` to override git-root detection.
+Optional: `--briefs-dir <path>` to override config, `--root <path>` to override project-root detection.
 
-The script reads `<git_root>/.claude-swarm.toml`, parses every `*.md` in `briefs_dir`, and prints one line per brief plus a summary. Exit 0 = all pass, exit 1 = at least one finding, exit 2 = config error.
+The script reads `<project_root>/.claude-swarm.toml`, parses every `*.md` in `briefs_dir`, and prints one line per brief plus a summary. Exit 0 = all pass, exit 1 = at least one finding, exit 2 = config error.
+
+### 1.5 Codebase-preconditions verification
+
+The script checks brief↔contract and brief↔brief consistency. It does **not** check brief↔codebase — a brief can falsely claim that some piece of code already exists. This is a recurring failure mode: parent authors a brief on a false premise, audit passes, leaf executes against assumptions about state that aren't true.
+
+After the script runs, for every brief:
+
+- Parse the `codebase_preconditions:` frontmatter list (if absent, skip — but see heuristic warning below).
+- For each entry, run its `verify:` shell command from the project root.
+- Any non-zero exit is a **FAIL** of `codebase-preconditions`. Surface as if the script had flagged it:
+
+> **FAIL: codebase-preconditions** — leaf-NN, precondition `<name>`: `verify` command exited <N>. Brief asserts a codebase state that does not hold. Either correct the brief or address the missing precondition before spawning the leaf.
+
+- **Heuristic warning when no preconditions declared.** If a brief's task prose contains claim-words ("already", "in place", "exists as of", "previously added", "we have", "was merged in wave") without any `codebase_preconditions:` entry, emit an **Advisory**:
+
+> **Advisory** (not blocking): leaf-NN task prose contains claim-word `<word>` but declares no `codebase_preconditions`. The brief asserts a codebase fact the audit cannot verify. Add a `verify:` command to make the assertion auditable.
+
+This converts "brief built on false premise" from an unprevented failure mode into a gated one — provided the parent authors `verify:` commands for any factual claim.
 
 ### 2. Render the output verbatim
 

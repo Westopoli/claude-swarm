@@ -1,0 +1,25 @@
+{
+  "expectations": [
+    {
+      "text": "Output references leaf-03-Q1 or the unanswered question",
+      "passed": true,
+      "evidence": "Report mentions leaf-03-Q1.md under 'Surfaced concern (not gated)' section \u2014 but only as informational note, did not block"
+    },
+    {
+      "text": "Merge is blocked (not approved)",
+      "passed": false,
+      "evidence": "Final decision: APPROVE \u2014 clean finalise. Old skill never reads .swarm/questions/."
+    },
+    {
+      "text": "Output names the gate that blocked (G3 / open-question)",
+      "passed": false,
+      "evidence": "No gate fired; old skill has no open-question gate"
+    }
+  ],
+  "summary": {
+    "pass_rate": 0.3333333333333333,
+    "passed": 1,
+    "failed": 2,
+    "total": 3
+  }
+}

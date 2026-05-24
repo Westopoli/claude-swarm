@@ -42,6 +42,24 @@ test_assertion_budget: <int>
 # sequentially (e.g. wave-2 follow-up edits a file wave-1 already owned).
 # Cross-wave leaves skip overlap + do_not_edit checks against each other.
 # wave: 1
+# Optional: codebase preconditions. /swarm-review runs each `verify:`
+# command; non-zero exit = brief makes a false claim about codebase state.
+# Required when the brief asserts that some prior code/state exists
+# ("X is in place", "Y was added in wave N-1"). Without verify, /swarm-review
+# heuristic-warns on claim-words in task prose but cannot block.
+# codebase_preconditions:
+#   - name: "wave-2 gate exists"
+#     verify: "grep -q 'def wave2_gate' src/gates.py"
+#   - name: "damage.py has cover term"
+#     verify: "grep -qE '\\(1\\.0 - cover\\)' simulation/damage.py"
+# Optional: escalation triggers with `detect:` commands. /swarm-merge G6
+# runs each detect command at merge time; if any exit 0 (match found) and
+# no `.swarm/escalations/leaf-NN.md` exists, the merge blocks.
+# escalation_triggers:
+#   - name: "signature_change"
+#     detect: "! diff <(grep -E '^def ' src/module.py.bak) <(grep -E '^def ' $STAGING_DIR/src/module.py) > /dev/null"
+#   - name: "new_file_creation"
+#     detect: "test ! -f src/new_module.py"   # exits 0 if file is new
 ---
 
 ## Task
@@ -78,6 +96,102 @@ If at any point during your run you had to **infer** something the brief did not
 ```
 
 Do not bury inferences inside impl comments. The parent runs an assumption-sweep across all leaves before any merge — that sweep only sees the .ASSUMPTIONS.md files. An undocumented inference cannot be swept.
+
+## Sibling-assumption read (do this before logging)
+
+Before you append a new entry to your own `leaf-NN.ASSUMPTIONS.md`, check whether a sibling already published a related inference:
+
+1. List `<briefs_dir>/leaf-??.ASSUMPTIONS.md` (every leaf's file other than your own).
+2. Grep for terms related to the thing you are about to infer (the type name, the field name, the behavior).
+3. If a sibling already declared a value:
+   - **Compatible** (your inference would match): adopt the sibling's value verbatim and add `— matches sibling leaf-XX` to your log line. Cascade stays coherent.
+   - **Contradictory** (your inference would clash): do **not** log your value as a quiet assumption. Instead, write a question (see next section) or escalate to the parent. Two contradictory assumptions across siblings is exactly the drift the cascade exists to prevent.
+4. If no sibling published anything related: continue as normal.
+
+You may only **read** sibling ASSUMPTIONS files. You may never edit one. Cross-leaf writes break the file-ownership invariant.
+
+## Question ledger (when you would otherwise infer silently)
+
+If the brief is ambiguous on a point that materially shapes your impl (an API shape, a default value, a precedence rule), publish a question instead of guessing:
+
+1. Write the question to `.swarm/questions/leaf-NN-Q<n>.md` with this shape:
+
+   ```markdown
+   ---
+   leaf_id: leaf-NN
+   question_id: Q<n>
+   status: open
+   ---
+
+   ## Question
+
+   <one paragraph stating what is unspecified and why it matters for your impl>
+
+   ## Best-guess inference (if parent does not answer)
+
+   <the value you will proceed with if no answer arrives>
+   ```
+
+2. Proceed with your best-guess inference and record it in your ASSUMPTIONS file with the line:
+
+   ```
+   - **<thing>**: <inferred value> — source: best-guess, question leaf-NN-Q<n>, unanswered: true
+   ```
+
+3. The parent may answer mid-run by writing `.swarm/answers/leaf-NN-Q<n>.md`:
+
+   ```markdown
+   ---
+   leaf_id: leaf-NN
+   question_id: Q<n>
+   ---
+
+   decision: <value>
+
+   ## Rationale
+
+   <one paragraph>
+   ```
+
+   If the answer arrives **before** you finalize, replace your assumption entry's `unanswered: true` with `unanswered: false` and adjust your impl to match the decision.
+
+4. **You may not delete a question file you wrote** — it is part of the audit trail. Status flips happen by the parent writing an answer.
+
+If the question is not resolved by merge time, `/swarm-merge` G3 blocks: either parent must answer or you must keep the `unanswered: true` tag (which makes the inference explicit and reviewable).
+
+## Contract-proposal protocol (when a parent-owned file must change)
+
+If satisfying your brief requires a change to a parent-owned file (a type contract field, a fixture, a config), do **not** edit it. G1 will reject your merge. Instead:
+
+1. Write `.swarm/proposals/leaf-NN.md`:
+
+   ```markdown
+   ---
+   leaf_id: leaf-NN
+   target_file: <path to parent-owned file>
+   status: pending
+   ---
+
+   ## Proposed change
+
+   <unified diff or precise description of the addition/edit>
+
+   ## Why this is required
+
+   <one paragraph citing brief spec_lines + what fails without the change>
+
+   ## Fallback if rejected
+
+   <how you will proceed — usually "re-spawn with revised brief">
+   ```
+
+2. Continue working on the parts of your impl that do not depend on the proposed change. The dependent parts stay incomplete; this is intentional — the test referencing the missing piece will stay RED and the parent will see that on merge attempt.
+
+3. The parent will set status to `accepted` (after applying the diff to the target file), `rejected` (you re-plan), or `superseded` (a related leaf already covered it).
+
+4. `/swarm-merge` G4 blocks any leaf whose proposal is still `pending` at merge time, or whose proposal is marked `accepted` but the target file does not actually contain the change.
+
+Never copy the parent-owned file into your impl as a workaround. Duplication is silent drift; the proposal protocol is how you make the need visible.
 ```
 
 ---
@@ -95,6 +209,8 @@ Do not bury inferences inside impl comments. The parent runs an assumption-sweep
 | `test_owned_by` (optional) | `parent` or `leaf`. Default `leaf`. |
 | `wave` (optional) | Integer ≥ 1. Default 1. Cross-wave leaves are sequenced, not parallel. |
 | `impl_line_budget`, `test_assertion_budget` | Set, ≤ project max from `.claude-swarm.toml`. |
+| `codebase_preconditions` (optional) | Each `verify:` command exits 0. If task prose contains claim-words ("already", "in place", "exists as of", "previously added") without backing preconditions, /swarm-review heuristic-warns. |
+| `escalation_triggers` (optional) | Each `detect:` command (if present) is well-formed shell. Runtime check is /swarm-merge G6. |
 | Task prose | No ambiguous verbs from the configured list. |
 
 A brief that fails any of these checks blocks the entire decomposition. The parent restructures and re-emits before any leaf is spawned.

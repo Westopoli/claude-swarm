@@ -1,0 +1,10 @@
+{
+  "eval_id": "G-open-question",
+  "eval_name": "G-open-question",
+  "prompt": "Run /swarm-merge on staged leaf-03. An open question file exists at .swarm/questions/leaf-03-Q1.md with no answer.",
+  "assertions": [
+    {"text": "Output references leaf-03-Q1 or the unanswered question", "id": "g1"},
+    {"text": "Merge is blocked (not approved)", "id": "g2"},
+    {"text": "Output names the gate that blocked (G3 / open-question)", "id": "g3"}
+  ]
+}

@@ -25,7 +25,7 @@ The cascade exists because a single agent attempting a large plan loses resoluti
 ## What "good performance" is NOT
 
 - Token efficiency. Cascade adds ceremony on purpose. +20% tokens for prevented disaster = trade always worth taking.
-- Wall-clock speed. Wave-1 disaster took an afternoon to recover. Skill that adds 30s per decision to prevent that is free.
+- Wall-clock speed. A mis-decomposition can cost a half-day of recovery. A skill that adds 30s per decision to prevent that is free.
 - Pass-rate on tiny toy fixtures. 3-leaf seeded-fault evals measure detection-when-told-to-look, not detection-at-scale. They are necessary but not sufficient.
 
 ## Required eval shape

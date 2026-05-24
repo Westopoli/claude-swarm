@@ -1,0 +1,5 @@
+## Assumptions made during leaf-07
+
+- **session_idle_timeout_seconds**: 1800 (30 minutes) — source: adopted from sibling leaf-04.ASSUMPTIONS.md verbatim per sibling-assumption read protocol. The brief explicitly states this must be "the same one leaf-04's cleanup function uses," so the two leaves are bound to the same value. leaf-04 logged this as a pure guess; the cascade stays coherent by adopting it here. — matches sibling leaf-04
+- **warning_window_seconds**: 300 (5 minutes) — source: brief task prose line "within 5 minutes of being considered idle". Not an inference, recorded for transparency.
+- **should_warn_idle semantics**: returns True iff the session's age (now_ts - last_active_ts) is in the half-open interval [idle_timeout - 300, idle_timeout). At/after idle_timeout the session is already idle (leaf-04's domain), so warning no longer applies. Before idle_timeout - 300 the session is not yet within the 5-minute warning window. — source: brief line "within 5 minutes of being considered idle"; boundary at idle_timeout itself is inferred (transition from "should warn" to "is idle") since the brief does not state inclusivity.

@@ -53,8 +53,8 @@ Run these steps in order. Stop at the first failure and report.
 
 ### 1. Locate config
 
-- Find git root.
-- Read `<git_root>/.claude-swarm.toml`. If missing, copy `~/.claude/skills/swarm-shared/templates/.claude-swarm.toml.example` to `<git_root>/.claude-swarm.toml` and ask the user to set `type_contract_path` before continuing. Don't guess.
+- Find project root: walk up from the current working directory until a `.claude-swarm.toml` file or a directory that looks like a project root (e.g., contains `src/`, `specs/`, or similar) is found. Do not run any git commands.
+- Read `<project_root>/.claude-swarm.toml`. If missing, copy `~/.claude/skills/swarm-shared/templates/.claude-swarm.toml.example` to `<project_root>/.claude-swarm.toml` and ask the user to set `type_contract_path` before continuing. Don't guess.
 
 ### 2. Spec gate
 
@@ -82,6 +82,17 @@ Run these steps in order. Stop at the first failure and report.
 - The test **must fail** (RED). If it passes, abort with the message: "Umbrella is green before any leaf — the cascade has nothing to do. Check that the umbrella encodes the spec's acceptance criteria, not stub passes."
 - If the umbrella file doesn't exist, stop and ask the user where it should live; do not invent a location.
 
+**Behavioral-strength heuristic.** Read the umbrella test file(s). For each test function, classify assertions:
+
+- *Source-grep*: assertion is on a string derived from `open(<path>).read()` or `Path(<path>).read_text()` — i.e., the test is checking that a source file *contains* a pattern, not that a behavior is correct.
+- *Behavioral*: assertion is on the return value of an imported function call, or on side-effects after invocation.
+
+If >50% of assertions in any umbrella test are source-grep, render:
+
+> ⚠ Weak umbrella: `<test_function>` has N source-grep assertions vs M behavioral. A test that greps file contents passes if the source *looks right* and fails only on rename — it cannot catch the case where the file has the right text but the behavior is wrong. The post-merge apex test (`apex_test_cmd`) is the second-chance gate, but a behavioral umbrella catches gaps earlier. Add at least one assertion on the return value of an imported call before continuing.
+
+This is a heuristic warning, not a hard block by default. The user can override: "proceed anyway, apex test will cover behavioral side." Record the override in `<briefs_dir>/ASSUMPTIONS.md` so the wave-sweep sees it.
+
 ### 5. Dependency map
 
 - If `graphify_cmd` is set, run it and inspect the output for files that two planned slices would both touch.
@@ -91,12 +102,13 @@ Run these steps in order. Stop at the first failure and report.
 
 For each slice you've identified:
 - Write `<briefs_dir>/leaf-NN.md` following the template at `~/.claude/skills/swarm-shared/references/brief-template.md` exactly.
-- One test file + one impl file per brief. No exceptions.
+- One test file + one impl file per brief. (Plural `test_files` / `impl_files` permitted when the slice legitimately spans more than one file — see template.)
 - `do_not_edit` must include every other brief's owned files, plus the parent-owned globs from config.
 - `contract_imports` may only reference symbols you found in step 3.
 - `spec_lines` must be a concrete `int-int` range citing the spec.
 - Task prose: imperative, references spec_lines, no ambiguous verbs (decide / choose / design / determine / figure out / pick / etc.).
 - Set `impl_line_budget` and `test_assertion_budget` from config defaults; tighten if you can.
+- The brief template already contains the three coordination protocols (sibling-ASSUMPTIONS read, question ledger, contract proposals). Do not strip those sections — they are what convert silent inference into traceable, gated inference.
 
 ### 7. Hand off
 

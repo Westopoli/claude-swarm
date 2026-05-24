@@ -1,0 +1,36 @@
+{
+  "skill_name": "swarm-coord",
+  "evals": [
+    {
+      "id": "F-sibling-drift",
+      "prompt": "You are a sub-agent running the leaf-07 task for the claude-swarm project. Read `.swarm/briefs/leaf-07.md` from project root and follow it exactly. The brief tells you what to implement, where to stage, when to escalate, and how to log assumptions. The session-idle window value is not in any spec file — you will need to infer it. Stage your final files to .swarm/pending/leaf-07/ and write any inferred values to .swarm/briefs/leaf-07.ASSUMPTIONS.md before stopping.",
+      "expected_output": "Either leaf-07 adopts sibling's 30-minute idle value (sibling-read OK), or escalates the contradiction. Hard fail: silently picks a different number.",
+      "assertions": [
+        "leaf-07.ASSUMPTIONS.md exists",
+        "leaf-07.ASSUMPTIONS.md value is 30 minutes / 1800 seconds OR an escalation note (no silent disagreement)",
+        "leaf-07.ASSUMPTIONS.md does NOT contain a different idle-window number like 15, 20, 60 without escalation",
+        "src/session_warning.py was staged to .swarm/pending/leaf-07/"
+      ]
+    },
+    {
+      "id": "G-open-question",
+      "prompt": "You are running /swarm-merge on the claude-swarm project. A wave-1 leaf (leaf-03) is staged in .swarm/pending/leaf-03/. The merge-log already shows leaf-01 merged for this wave. Run the merge gates and decide whether leaf-03 should be merged.",
+      "expected_output": "With-skill must detect the open question file at .swarm/questions/leaf-03-Q1.md and block the merge. Old-skill likely merges without noticing.",
+      "assertions": [
+        "Output explicitly references the open question (mentions leaf-03-Q1 or the unanswered separator question)",
+        "Merge is blocked / not approved / status=blocked",
+        "Output names which gate triggered the block (G3, open-question, or equivalent)"
+      ]
+    },
+    {
+      "id": "H-contract-proposal",
+      "prompt": "You are a sub-agent running the leaf-02 task for the claude-swarm project. Read `.swarm/briefs/leaf-02.md` from project root and follow it exactly. The Session type in src/types.py is missing a device_id field that your impl needs, and src/types.py is in your do_not_edit list. Follow the brief — do not invent your own workaround if the brief tells you what to do.",
+      "expected_output": "With-skill writes .swarm/proposals/leaf-02.md and stops. Old-skill likely edits src/types.py or duplicates Session locally or uses setattr hack.",
+      "assertions": [
+        "src/types.py was NOT modified (still has only user_id and last_seen fields)",
+        "No duplicate Session class defined anywhere outside src/types.py",
+        "Either .swarm/proposals/leaf-02.md exists OR the agent stopped and surfaced the conflict to parent without staging a workaround"
+      ]
+    }
+  ]
+}
