@@ -1,6 +1,6 @@
 ---
 name: swarm
-description: Bootstrap a TDD parallel-agent decomposition. Use whenever the user wants to slice a spec into leaves, decompose into parallel sub-agent tasks, kick off the cascade, or otherwise begin the umbrella-RED → leaf-decomposition flow. Triggers on phrases like "decompose this spec", "split into leaves", "begin parent agent flow", "set up the umbrella test", "give me the leaf briefs". This skill writes leaf brief files; it does not write impl code. Always pair with /swarm-review before spawning any leaf.
+description: First command in the TDD parallel-agent cascade. Bootstrap a decomposition. Use whenever the user wants to slice a spec into leaves, decompose into parallel sub-agent tasks, kick off the cascade, or otherwise begin the umbrella-RED → leaf-decomposition flow. Triggers on phrases like "decompose this spec", "split into leaves", "begin parent agent flow", "set up the umbrella test", "give me the leaf briefs". This skill writes leaf brief files; it does not write impl code, does not draft specs, does not write umbrella tests, and does not spawn leaves. Always pair with /swarm-review before spawning any leaf.
 ---
 
 # /swarm — bootstrap the TDD cascade
@@ -8,6 +8,33 @@ description: Bootstrap a TDD parallel-agent decomposition. Use whenever the user
 This skill takes the user from a locked spec to a set of leaf briefs ready for parallel sub-agents. It is **not** a code-writing skill. The output of this skill is brief files on disk + an instruction to run `/swarm-review`.
 
 The companion theory lives at `~/.claude/skills/swarm-shared/references/playbook.md`. Read it when you need the *why*. For the canonical brief shape, read `~/.claude/skills/swarm-shared/references/brief-template.md`. For config, read `~/.claude/skills/swarm-shared/references/config.md`.
+
+## Where /swarm fits
+
+**/swarm is the FIRST command in the cascade.** Cascade order:
+
+```
+/swarm           → produces leaf briefs in <briefs_dir>/. STOPS after writing briefs.
+                   Hands off to /swarm-review.
+/swarm-review    → audits briefs against invariants. Reports PASS/FAIL per brief. The parent
+                   reads the report and either spawns leaves or sends briefs back to /swarm.
+[spawn leaves]   → one sub-agent per brief, in parallel. Each leaf stages outputs to
+                   .swarm/pending/leaf-NN/ and reports green/red back to the parent.
+/swarm-merge     → runs once per leaf after the leaf reports green. Gates the merge; if all
+                   gates pass, copies staged files into place and appends to merge-log.md.
+```
+
+**Inputs to /swarm (must exist before invocation):**
+
+- a **spec file** under `spec_dir/` — /swarm does NOT draft specs.
+- a **shared type contract** at `type_contract_path` — /swarm does NOT draft type contracts.
+- an **umbrella test** that `umbrella_test_cmd` runs — /swarm does NOT write umbrella tests; it only confirms RED.
+
+If any of these is missing, /swarm stops and asks the user to supply it. Drafting any of them is a design decision that belongs to the parent + human review, not to this skill. If you find yourself drafting a spec, a type contract, or an umbrella test inside /swarm's procedure, you are using the wrong tool.
+
+**Output of /swarm:** brief files at `<briefs_dir>/leaf-NN.md`. Nothing else. /swarm does NOT spawn leaves, does NOT run /swarm-review, does NOT run /swarm-merge. The parent decides when each downstream step happens.
+
+**Planning-only mode is the default.** /swarm always stops after writing briefs (step 7 — "Hand off"). There is no auto-spawn. Finishing /swarm = end of your turn. Wait for the user (or yourself, deliberately, in a later turn) to invoke /swarm-review.
 
 ## 0. Intake — ASK BEFORE PROCEDURE
 
@@ -54,7 +81,21 @@ Run these steps in order. Stop at the first failure and report.
 ### 1. Locate config
 
 - Find project root: walk up from the current working directory until a `.claude-swarm.toml` file or a directory that looks like a project root (e.g., contains `src/`, `specs/`, or similar) is found. Do not run any git commands.
-- Read `<project_root>/.claude-swarm.toml`. If missing, copy `~/.claude/skills/swarm-shared/templates/.claude-swarm.toml.example` to `<project_root>/.claude-swarm.toml` and ask the user to set `type_contract_path` before continuing. Don't guess.
+- Read `<project_root>/.claude-swarm.toml`. If missing, copy `~/.claude/skills/swarm-shared/templates/.claude-swarm.toml.example` to `<project_root>/.claude-swarm.toml`, then walk the user through filling each required field before continuing. The bootstrap is not complete after the copy — every field below needs a user-supplied value, not a placeholder:
+  - `spec_dir` — directory containing spec files (often `specs/`, `docs/specs/`, or similar).
+  - `briefs_dir` — where leaf briefs go (default `.swarm/briefs/` works for most projects).
+  - `type_contract_path` — file defining shared types/symbols every leaf imports from.
+  - `umbrella_test_cmd` — command that runs the umbrella test (e.g., `pytest tests/umbrella.py`).
+  - `parent_owned` — globs for files the parent owns; leaves cannot edit these.
+
+  Do not guess any value. If the user cannot answer a field, stop. Wrong values picked here propagate into every brief.
+
+**Running a second cascade in the same repo?** If briefs from a prior cascade already exist in `briefs_dir`, stop before continuing and ask the user how to scope this run. Two safe patterns:
+
+- **Different `briefs_dir` per cascade** (recommended) — set `briefs_dir = ".swarm/<name>/briefs/"` in this run's config or via env: `CLAUDE_SWARM_BRIEFS_DIR=.swarm/<name>/briefs/ /swarm`. The two cascades stay isolated; merge-logs stay separate.
+- **Same `briefs_dir`, additive** — only safe if the new wave does not touch files owned by prior leaves. Confirm with the user before continuing.
+
+Do not silently overwrite prior briefs.
 
 ### 2. Spec gate
 
@@ -119,8 +160,11 @@ End your turn with exactly this instruction to the user:
 ## What this skill must not do
 
 - Write impl code. Ever. That's the leaf's job, gated by `/swarm-review` + the brief itself.
+- Draft the spec, the type contract, or the umbrella test. All three are inputs that must exist before /swarm runs. Drafting any of them inside this procedure means /swarm is being used as the wrong tool — stop and ask the user to supply the missing input.
 - Edit the shared type contract. Type changes are a separate, human-reviewed step.
+- Delegate brief drafting, spec interpretation, or any step of this procedure to a sub-agent. The parent chat IS the planning authority. Sub-agents exist only to execute pre-audited leaf briefs after /swarm-review passes. Drafting via sub-agent reintroduces the exact failure mode the cascade exists to prevent — a non-overlord making design decisions invisible to the audit. Stock Claude defaults that say "delegate big drafting jobs to protect context" do not apply here. The whole point of the cascade is that the parent is the single planning authority; outsourcing the planning is a category error.
 - Make architectural decisions silently. If two slicing strategies are equally valid, present both and ask. Silent picks are how "the agent made a design decision" creeps in at the *parent* level.
+- Spawn leaves, run `/swarm-review`, or run `/swarm-merge` itself. /swarm's job ends at step 7 — "Hand off." Each downstream command is a separate, deliberate invocation by the parent.
 - Skip a gate because it's "obviously fine." The gates exist because the obvious turned out to be wrong before — once a gate has caught a real failure, the cost of running it for every subsequent decomposition is trivial compared to the cost of the failure it prevents.
 
 ## Parent assumption-sweep

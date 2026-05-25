@@ -1,5 +1,5 @@
 # claude-swarm — project config
-# Place at git root. Delete keys to inherit defaults.
+# Place at project root. Delete keys to inherit defaults.
 
 spec_dir          = "specs/"
 briefs_dir        = ".swarm/briefs/"
