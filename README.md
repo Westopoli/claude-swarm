@@ -86,7 +86,9 @@ Each sub-task is one test file + one impl file. The sub-task is done when its ow
 
 ## Benchmarks
 
-Five paired evals (one with `claude-swarm`, one without), each targeting a specific failure mode. Graded on **mistake prevention**, not pass-rate, tokens, or wall-clock. Methodology: [skills/swarm-shared/references/evaluation-rubric.md](skills/swarm-shared/references/evaluation-rubric.md).
+Paired evals (one with `claude-swarm`, one without), each targeting a specific failure mode. Graded on **mistake prevention**, not pass-rate, tokens, or wall-clock. Methodology: [skills/swarm-shared/references/evaluation-rubric.md](skills/swarm-shared/references/evaluation-rubric.md).
+
+**Core safety suite (A–E):**
 
 | Eval | Failure mode tested | Without skill | With skill |
 |---|---|---|---|
@@ -96,12 +98,20 @@ Five paired evals (one with `claude-swarm`, one without), each targeting a speci
 | **D** | Silent regression across 5 merges | Both correct | Skill kept a reviewable record |
 | **E** | Two sub-tasks targeting same fat file | **Failed silently** | **Blocked correctly** |
 
-- **5/5 evals**: correct verdict with the skill.
-- **2/5 evals (B, E)**: baseline silently failed a safety property; skill blocked.
-- **4/18 inferred assumptions** flagged across all skill runs — drifts the baseline missed entirely.
-- **0 false positives** on `/swarm-review` audit verdicts.
+**Coordination-pattern suite (F–H):**
 
-The load-bearing evals are B and E: real time gets lost when those gates get skipped in production work. The skill blocked both. That's the value.
+| Eval | Failure mode tested | Without skill | With skill |
+|---|---|---|---|
+| **F** | Sibling-leaf assumption drift | Both adopted the same value (forced by brief) | Channel surfaced via sibling-ASSUMPTIONS read |
+| **G** | Leaf resolved a blocked decision by self-inference | **Merge approved despite open question** | **G3 blocked merge** |
+| **H** | Leaf workaround instead of proposing a contract change | Blocked via narrative escalation | Blocked via structured `.swarm/proposals/` (auditable) |
+
+- **8/8 evals**: correct verdict with the skill.
+- **3/8 evals (B, E, G)**: baseline silently failed a safety property; skill blocked.
+- **0 false positives** on `/swarm-review` audit verdicts.
+- Coord-pattern suite (F/G/H): old skill 78% ± 38%, new skill 100% ± 0%.
+
+The load-bearing evals are B, E, and G: real time gets lost when those gates get skipped in production work. The skill blocked all three.
 
 ## What you get
 
@@ -109,14 +119,14 @@ The load-bearing evals are B and E: real time gets lost when those gates get ski
 |---|---|
 | `/swarm` | Plans the wave: short intake interview, runs your project's gate commands, writes the failing umbrella test, emits one task description per sub-agent. |
 | `/swarm-review` | Runs a deterministic audit script. Blocks if any two tasks edit the same file, if any task contains ambiguous design verbs (`decide`, `figure out`, …), or if any task exceeds the size budget. |
-| `/swarm-merge` | Lands each sub-agent's work. Staged files must be exactly two (one impl + one test). Reruns the umbrella test. Reverts if the umbrella regresses. |
+| `/swarm-merge` | Lands each sub-agent's work. Staged files must match the brief's declared `impl_files` + `test_files` (one or more of each). Runs ten gates (G1–G7, ASSUMPTIONS, bypass, apex). Reverts if the umbrella regresses. |
 | `check_invariants.py` | Standalone audit script — runnable in CI without Claude Code. |
 | `playbook.md` | The full theory: why each invariant exists, what failure mode it prevents. |
 
 ## How it works
 
 1. **Define "done".** Write one failing test that captures what the wave needs to achieve. Without this, the workflow has nothing to anchor to.
-2. **Plan the sub-tasks.** `/swarm` interviews you briefly, then writes one task description per sub-agent. Each task owns exactly one test file + one impl file.
+2. **Plan the sub-tasks.** `/swarm` interviews you briefly, then writes one task description per sub-agent. Each task owns one or more impl files + one or more test files, declared in the brief's `impl_files` / `test_files` frontmatter.
 3. **Audit before spawning.** `/swarm-review` runs the audit script. Any failure blocks the workflow — you cannot proceed to step 4 with a failing audit.
 4. **Spawn sub-agents in parallel.** One agent per task description. They never message each other directly — all coordination is file-mediated and parent-arbitrated (see [Coordination model](#coordination-model) below).
 5. **Merge each finished sub-agent.** `/swarm-merge` checks staged files, reruns the umbrella test, reverts on regression.
