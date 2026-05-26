@@ -84,7 +84,7 @@ Receives one assignment: one test file, one impl file, the spec line range it mu
 
 ## Intake interview and the assumption log
 
-Every cascade skill (`/swarm`, `/swarm-review`, `/swarm-merge`) begins with an **intake interview**. The interview lives in the skill's own SKILL.md "Step 0" section. Its purpose: lock the scope of the batch *before* any procedure runs, because the most common cascade failure mode traces post-mortem to one of the intake questions being silently inferred by the parent agent instead of stated by the user.
+Every cascade skill (`/swarm`, `/swarm-spawn`, `/swarm-review`, `/swarm-merge`) begins with an **intake interview**. The interview lives in the skill's own SKILL.md "Step 0" section. Its purpose: lock the scope of the batch *before* any procedure runs, because the most common cascade failure mode traces post-mortem to one of the intake questions being silently inferred by the parent agent instead of stated by the user.
 
 **Interactive invocation:** ask the questions, wait for answers, restate scope, confirm.
 
@@ -92,13 +92,14 @@ Every cascade skill (`/swarm`, `/swarm-review`, `/swarm-merge`) begins with an *
 
 | Skill | Log path |
 |---|---|
-| `/swarm` | `<briefs_dir>/ASSUMPTIONS.md` |
+| `/swarm` | `<spec_dir>/<name>.UNSTATED.md` |
+| `/swarm-spawn` | `<briefs_dir>/ASSUMPTIONS.md` |
 | `/swarm-review` | `<briefs_dir>/REVIEW_ASSUMPTIONS.md` |
 | `/swarm-merge` | `<briefs_dir>/leaf-NN.MERGE_ASSUMPTIONS.md` |
 
 Leaf agents follow the same convention: if a leaf had to infer anything, write `<briefs_dir>/leaf-NN.ASSUMPTIONS.md`.
 
-After all leaves report green and before any `/swarm-merge` runs, the parent runs the **assumption-sweep** (procedure in `/swarm`'s SKILL.md). The sweep reads every log, classifies entries against the spec, the strategy doc, and the type contract, and surfaces drift with a damage assessment and a patch suggestion. The user makes the call on patch vs. redo. Default bias: patch — redo costs an afternoon, a patch usually costs minutes.
+After all leaves report green and before any `/swarm-merge` runs, the parent runs the **assumption-sweep** (procedure in `/swarm-spawn`'s SKILL.md). The sweep reads every log, classifies entries against the spec, the strategy doc, and the type contract, and surfaces drift with a damage assessment and a patch suggestion. The user makes the call on patch vs. redo. Default bias: patch — redo costs an afternoon, a patch usually costs minutes.
 
 The reason this is a written convention rather than a free-form check: an LLM auditing its own inferences in the same turn rarely catches them. A separate sweep, against persisted logs, with explicit categories (contradicts-spec / contradicts-strategy-doc / cross-leaf / fabricated / compounded), forces structured re-examination.
 

@@ -38,14 +38,14 @@ Future iterations must include at least one eval in **each** of these categories
 - Faults seeded **subtly and deep**: overlap on a file whose name is one character different from a sibling; strategy-doc drift in a single brief whose `contract_imports` cite a type that doesn't exist in `type_contract_path`; sizing violation in the budgets, not in obvious prose.
 - With_skill must catch all seeded faults. Baseline likely loses ≥1 as N grows.
 
-### B. Solo-implementation prevention (`/swarm`)
+### B. Solo-implementation prevention (`/swarm-spawn`)
 
 - Subagent given task **"implement feature X per `specs/X.md`"** — phrased as an implementation request, not as a decomposition request.
 - With_skill (skill auto-triggers on "implement" + presence of spec): produces brief set, does **zero** edits to `src/`.
 - Baseline: likely opens `src/` and starts writing the impl directly.
 - Measure: count of `src/` writes during the run. Pass = 0.
 
-### C. Strategy-doc drift detection (`/swarm` spec-gate)
+### C. Strategy-doc drift detection (`/swarm-spawn` spec-gate)
 
 - `docs/strategy.md` says one thing (e.g., "all aggregation in SQL").
 - `specs/wave-N.md` violates it (e.g., "use Python pandas for the aggregator").

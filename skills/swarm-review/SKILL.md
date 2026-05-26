@@ -1,6 +1,6 @@
 ---
 name: swarm-review
-description: Audit a set of leaf briefs against the three TDD-cascade invariants before any leaf agent is spawned. Use this whenever the user says "review the briefs", "audit the decomposition", "check the leaf scope", "are these slices safe to run in parallel", "verify the leaf assignments", "did the parent overlap anything", "is anything ambiguous", or anytime briefs were just emitted by /swarm or rewritten after a failure. This skill runs a deterministic check script first — it must never substitute LLM judgment for the script's verdict. Always run this skill before spawning leaves; you'd rather catch overlap/design-leak/oversized-leaf failures at audit time than during execution.
+description: Audit a set of leaf briefs against the three TDD-cascade invariants before any leaf agent is spawned. Use this whenever the user says "review the briefs", "audit the decomposition", "check the leaf scope", "are these slices safe to run in parallel", "verify the leaf assignments", "did the parent overlap anything", "is anything ambiguous", or anytime briefs were just emitted by /swarm-spawn or rewritten after a failure. This skill runs a deterministic check script first — it must never substitute LLM judgment for the script's verdict. Always run this skill before spawning leaves; you'd rather catch overlap/design-leak/oversized-leaf failures at audit time than during execution.
 ---
 
 # /swarm-review — 3-invariant audit on leaf briefs
@@ -21,14 +21,14 @@ Ask the user as a single block:
 
 1. **Which briefs directory?** (Default: `briefs_dir` from `.claude-swarm.toml`.)
 2. **Single wave or multi-wave audit?** A *wave* is a sequential batch of parallel leaves; wave N+1 runs after all wave-N leaves merge and may re-edit wave-N-owned files. Multi-wave changes how `non-overlap` is interpreted (waves are sequential — leaf-04 in wave 1 may legitimately own a file leaf-12 in wave 2 also touches).
-3. **Were these briefs just emitted by `/swarm`, or were they hand-edited after a prior FAIL?** Hand-edits without re-running `/swarm` can re-introduce drift the original procedure caught.
+3. **Were these briefs just emitted by `/swarm-spawn`, or were they hand-edited after a prior FAIL?** Hand-edits without re-running `/swarm-spawn` can re-introduce drift the original procedure caught.
 4. **Anything you already know is borderline?** (E.g., "leaf-09 is intentionally on the edge of the sizing budget — flag if you must but it's an explicit choice.") Borderline cases the user has already signed off on can be Advisory rather than blocking.
 
 Restate scope in one sentence and wait for confirmation.
 
 **If non-interactive:**
 
-Record an assumption log at `<briefs_dir>/REVIEW_ASSUMPTIONS.md` listing every inferred answer with its source. The downstream parent assumption-sweep (see `/swarm`) will surface drifts.
+Record an assumption log at `<briefs_dir>/REVIEW_ASSUMPTIONS.md` listing every inferred answer with its source. The downstream parent assumption-sweep (see `/swarm-spawn`) will surface drifts.
 
 ## Procedure
 
@@ -71,7 +71,7 @@ Show the user the script's output. Do **not** rewrite findings into your own wor
 For each failure:
 - Read the named brief.
 - Tell the user which line in the brief triggered the finding.
-- Suggest the *category* of fix (e.g., "this brief needs to be split into two — one for `parse()` and one for `validate()`"), but do not edit the brief yourself. Brief edits belong to `/swarm` (or the user) so the next audit run starts from a consistent state.
+- Suggest the *category* of fix (e.g., "this brief needs to be split into two — one for `parse()` and one for `validate()`"), but do not edit the brief yourself. Brief edits belong to `/swarm-spawn` (or the user) so the next audit run starts from a consistent state.
 
 ### 4. Verdict
 
@@ -79,7 +79,7 @@ End the turn with one of:
 
 > **PASS** — N briefs pass. You may now spawn leaf agents.
 
-> **FAIL** — N briefs fail (`leaf-XX`, `leaf-YY`, …). Restructure and re-emit via `/swarm`, then re-run `/swarm-review`. Do not spawn any leaf until this reports PASS.
+> **FAIL** — N briefs fail (`leaf-XX`, `leaf-YY`, …). Restructure and re-emit via `/swarm-spawn`, then re-run `/swarm-review`. Do not spawn any leaf until this reports PASS.
 
 When the FAIL is caused by **non-overlap** (two briefs claim the same impl file), always append the resolution options so the parent has a clear path forward:
 

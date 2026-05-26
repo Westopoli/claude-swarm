@@ -53,7 +53,7 @@ ambiguous_verbs = [
 ]
 
 [gates]
-# Optional project-specific gates run before /swarm continues past spec-gate.
+# Optional project-specific gates run before /swarm-spawn continues past spec-gate.
 # Each entry is a shell command. Non-zero exit blocks. Empty list = no extra gates.
 # $SPEC_FILE is exported by the skill before each command.
 extra_spec_gate_cmds = []
@@ -73,7 +73,7 @@ If `.claude-swarm.toml` is missing, the skill uses every default above. `type_co
 1. `.claude-swarm.toml` at project root.
 2. Built-in defaults.
 
-Environment variables can override individual keys for one-off runs: `CLAUDE_SWARM_SPEC_DIR=alt-specs/ /swarm`.
+Environment variables can override individual keys for one-off runs: `CLAUDE_SWARM_SPEC_DIR=alt-specs/ /swarm-spawn`.
 
 ## Why a config file rather than CLI flags
 

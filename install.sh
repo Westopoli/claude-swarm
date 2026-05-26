@@ -13,7 +13,7 @@ set -euo pipefail
 REPO_URL="https://github.com/Westopoli/claude-swarm"
 RAW_BASE="https://raw.githubusercontent.com/Westopoli/claude-swarm/main"
 SKILLS_DIR="${HOME}/.claude/skills"
-SKILLS=(swarm swarm-review swarm-merge swarm-shared)
+SKILLS=(swarm swarm-spawn swarm-review swarm-merge swarm-shared)
 
 echo "claude-swarm — installing to ${SKILLS_DIR}"
 mkdir -p "${SKILLS_DIR}"
@@ -45,5 +45,6 @@ done
 echo ""
 echo "Done. Restart Claude Code, then try:"
 echo "  /swarm"
+echo "  /swarm-spawn"
 echo "  /swarm-review"
 echo "  /swarm-merge"

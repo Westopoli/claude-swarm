@@ -10,11 +10,12 @@
 
 A Claude Code skill pack that lets you run many AI sub-agents in parallel without the usual failure modes: overlapping file edits, silent design decisions, oversized tasks, regressions slipping past merge.
 
-Three slash commands. A dozen layered gates. One tree-shaped cascade.
+Four slash commands. A dozen layered gates. One tree-shaped cascade.
 
 | Command | What it does |
 |---|---|
-| `/swarm` | Plans the work: reads your requirements, writes a single failing umbrella test that defines "done", checks the umbrella for behavioral strength (not source-grep), emits one task description per sub-agent. |
+| `/swarm` | Discovery step (optional, for users starting from scratch). Interviews you, drafts a spec, drafts a minimal type contract, drafts a failing umbrella test, and surfaces every assumption it had to make for your approval before handing off. |
+| `/swarm-spawn` | Decomposition. Takes a locked spec + type contract + umbrella test and emits one task description per sub-agent. Skip `/swarm` and start here if you already have those inputs. |
 | `/swarm-review` | Audits task descriptions before any sub-agent starts. Blocks on overlap, ambiguous design language, oversize, and unverified codebase-state claims (`verify:` commands on briefs). |
 | `/swarm-merge` | Lands each sub-agent's work safely. Runs ten gates per merge (G1–G7 + ASSUMPTIONS + bypass + apex) and reverts if the umbrella regresses. See [Gate reference](#gate-reference). |
 
@@ -69,7 +70,12 @@ Each sub-task is one test file + one impl file. The sub-task is done when its ow
 ### With claude-swarm
 
 ```
-   /swarm  ──►  sub-task descriptions      (umbrella test failing, locked in)
+   [optional] /swarm  ──►  spec + type contract + umbrella (RED)
+                              user-confirmed at every step
+                              (skip if you already have these)
+                  │
+                  ▼
+   /swarm-spawn  ──►  sub-task descriptions      (umbrella test failing, locked in)
                   │
                   ▼
              /swarm-review  ──►  PASS / FAIL
@@ -117,7 +123,8 @@ The load-bearing evals are B, E, and G: real time gets lost when those gates get
 
 | Skill | What |
 |---|---|
-| `/swarm` | Plans the wave: short intake interview, runs your project's gate commands, writes the failing umbrella test, emits one task description per sub-agent. |
+| `/swarm` | Discovery (optional). Intent → spec + minimal type contract + failing umbrella test. Every architecture decision is either user-approved at an explicit gate or flagged in `.UNSTATED.md` for resolution before hand-off. Skip if you already have these three artifacts. |
+| `/swarm-spawn` | Plans the wave: short intake interview, runs your project's gate commands, reads the (already-failing) umbrella test, emits one task description per sub-agent. |
 | `/swarm-review` | Runs a deterministic audit script. Blocks if any two tasks edit the same file, if any task contains ambiguous design verbs (`decide`, `figure out`, …), or if any task exceeds the size budget. |
 | `/swarm-merge` | Lands each sub-agent's work. Staged files must match the brief's declared `impl_files` + `test_files` (one or more of each). Runs ten gates (G1–G7, ASSUMPTIONS, bypass, apex). Reverts if the umbrella regresses. |
 | `check_invariants.py` | Standalone audit script — runnable in CI without Claude Code. |
@@ -126,7 +133,7 @@ The load-bearing evals are B, E, and G: real time gets lost when those gates get
 ## How it works
 
 1. **Define "done".** Write one failing test that captures what the wave needs to achieve. Without this, the workflow has nothing to anchor to.
-2. **Plan the sub-tasks.** `/swarm` interviews you briefly, then writes one task description per sub-agent. Each task owns one or more impl files + one or more test files, declared in the brief's `impl_files` / `test_files` frontmatter.
+2. **Plan the sub-tasks.** `/swarm-spawn` interviews you briefly, then writes one task description per sub-agent. Each task owns one or more impl files + one or more test files, declared in the brief's `impl_files` / `test_files` frontmatter. (If you're starting from scratch and don't yet have the failing test, run `/swarm` first — it walks you through drafting the spec, the type contract, and the umbrella test with explicit user-confirmation gates.)
 3. **Audit before spawning.** `/swarm-review` runs the audit script. Any failure blocks the workflow — you cannot proceed to step 4 with a failing audit.
 4. **Spawn sub-agents in parallel.** One agent per task description. They never message each other directly — all coordination is file-mediated and parent-arbitrated (see [Coordination model](#coordination-model) below).
 5. **Merge each finished sub-agent.** `/swarm-merge` checks staged files, reruns the umbrella test, reverts on regression.
@@ -154,7 +161,7 @@ Every safety net is a numbered gate. Each runs at a specific point in the workfl
 | `no-design` | No ambiguous verbs in task prose; no symbols outside the locked contract. | `/swarm-review` |
 | `sizing` | Impl/test budgets within configured caps. | `/swarm-review` |
 | `codebase-preconditions` | `verify:` commands on briefs that claim codebase state pass. | `/swarm-review` |
-| `weak-umbrella` heuristic | Umbrella test asserts on *behavior*, not source-grep. | `/swarm` step 4 |
+| `weak-umbrella` heuristic | Umbrella test asserts on *behavior*, not source-grep. | `/swarm` step 8 (if drafted) / `/swarm-spawn` step 4 (if pre-existing) |
 | `G1` parent-owned | No staged file matches `parent_owned` globs. | `/swarm-merge` |
 | `G2` ASSUMPTIONS | Inferences are logged, not buried. | `/swarm-merge` |
 | `G3` open-question | Every published question has an answer or `unanswered: true` ack. | `/swarm-merge` |
@@ -167,7 +174,7 @@ Every safety net is a numbered gate. Each runs at a specific point in the workfl
 
 ## Install
 
-Copies the skills into `~/.claude/skills/`. Restart Claude Code, then invoke any of `/swarm`, `/swarm-review`, `/swarm-merge`.
+Copies the skills into `~/.claude/skills/`. Restart Claude Code, then invoke any of `/swarm`, `/swarm-spawn`, `/swarm-review`, `/swarm-merge`.
 
 **macOS / Linux**
 ```bash
@@ -199,7 +206,7 @@ cd claude-swarm
 
 ```bash
 # macOS / Linux
-rm -rf ~/.claude/skills/{swarm,swarm-review,swarm-merge,swarm-shared}
+rm -rf ~/.claude/skills/{swarm,swarm-spawn,swarm-review,swarm-merge,swarm-shared}
 ```
 
 ```powershell

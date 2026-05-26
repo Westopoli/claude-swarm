@@ -70,13 +70,13 @@ Record an assumption log at `<briefs_dir>/leaf-NN.MERGE_ASSUMPTIONS.md` listing 
 
 ### 0.4 Wave assumption-sweep required (G7)
 
-The parent's aggregate assumption-sweep (procedure in `/swarm` SKILL.md) is a separate document from per-leaf merge sweep. It runs **across all leaves of the wave** before any leaf merges and surfaces cross-leaf drift no per-leaf check sees.
+The parent's aggregate assumption-sweep (procedure in `/swarm-spawn` SKILL.md) is a separate document from per-leaf merge sweep. It runs **across all leaves of the wave** before any leaf merges and surfaces cross-leaf drift no per-leaf check sees.
 
 Determine the merging leaf's wave (from brief frontmatter, default `1`). Search `merge-log.md` for prior entries from this same wave:
 
 - If **no prior entries** for this wave (this is the first merge of the wave): require `.swarm/wave-<wave>.SWEEP.md` to exist. If missing → **block**:
 
-> ⚠ G7: this is the first merge of wave `<wave>`, but no parent assumption-sweep file at `.swarm/wave-<wave>.SWEEP.md` exists. The aggregate sweep must run before any leaf of the wave merges. See `/swarm` SKILL.md "Parent assumption-sweep" for procedure.
+> ⚠ G7: this is the first merge of wave `<wave>`, but no parent assumption-sweep file at `.swarm/wave-<wave>.SWEEP.md` exists. The aggregate sweep must run before any leaf of the wave merges. See `/swarm-spawn` SKILL.md "Parent assumption-sweep" for procedure.
 
 - The sweep file's mtime must be newer than every `leaf-NN.ASSUMPTIONS.md` for this wave. Otherwise → **block**:
 
@@ -384,7 +384,7 @@ After all leaves in the queue merge cleanly, run `apex_test_cmd` from config (if
 - If `apex_test_cmd` is unset: render `apex test: skipped (apex_test_cmd not configured)`. Encourage user to configure one in `.claude-swarm.toml` if the project has meaningful integration behavior.
 - If set, run it. **Apex failure does not auto-revert** — at this point multiple leaves are merged, and identifying which leaf caused the apex failure is a separate forensic step. Block + report:
 
-> ⚠ Apex failure after queue merge. The leaves passed per-leaf umbrella isolation but the integration test failed. The cascade composed but the behavior did not. Investigate which merged leaf introduced the behavioral gap (likely candidate: any leaf with a source-grep-only umbrella assertion — see /swarm step 4 behavioral-umbrella check).
+> ⚠ Apex failure after queue merge. The leaves passed per-leaf umbrella isolation but the integration test failed. The cascade composed but the behavior did not. Investigate which merged leaf introduced the behavioral gap (likely candidate: any leaf with a source-grep-only umbrella assertion — see /swarm-spawn step 4 behavioral-umbrella check, or /swarm step 8 if discovery ran upstream).
 
 The apex gate is what catches the failure mode where a leaf's umbrella was a regex check on file source rather than a behavioral assertion. Per-leaf umbrellas can pass while integration fails; the apex test is the place where that gap becomes loud.
 

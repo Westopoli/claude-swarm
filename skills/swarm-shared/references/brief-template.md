@@ -1,6 +1,6 @@
 # Leaf Brief — Canonical Template
 
-Every leaf brief emitted by `/swarm` follows this shape. `/swarm-review` parses these fields directly and will fail audit if any are missing or malformed.
+Every leaf brief emitted by `/swarm-spawn` follows this shape. `/swarm-review` parses these fields directly and will fail audit if any are missing or malformed.
 
 A brief is the *entire* context a leaf agent receives. Nothing else. No project overview, no rationale, no description of sibling leaves. The minimum that lets the leaf finish its slice without needing to make a decision.
 
