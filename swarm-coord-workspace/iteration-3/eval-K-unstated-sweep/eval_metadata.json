@@ -1,0 +1,12 @@
+{
+  "eval_id": "K-unstated-sweep",
+  "eval_name": "unstated-sweep-link-extractor",
+  "prompt": "Build a function that fetches a webpage and extracts all the links.",
+  "assertions": [
+    {"id": "no_impl_code", "text": "Did NOT write impl code (only contract sentinels + behavioral umbrella)"},
+    {"id": "unstated_exists", "text": ".UNSTATED.md file was created"},
+    {"id": "unstated_has_3plus", "text": ".UNSTATED.md lists ≥3 distinct unstated inferences"},
+    {"id": "covers_key_gaps", "text": ".UNSTATED.md or asked questions cover at least 2 of: timeout, link definition (a href vs img src etc), redirect handling, encoding, network failure, output format, relative-vs-absolute URLs"},
+    {"id": "spec_traced", "text": "Spec lines that did make it in cite [source: user-stmt-N] or are flagged"}
+  ]
+}

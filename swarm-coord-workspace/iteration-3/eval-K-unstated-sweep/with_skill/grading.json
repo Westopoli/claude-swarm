@@ -1,0 +1,15 @@
+{
+  "expectations": [
+    {"text": "Did NOT write impl code (only contract sentinels + behavioral umbrella)", "passed": true, "evidence": "src/types.py has 1 symbol extract_links with raise NotImplementedError. Umbrella uses loopback HTTP server for fixture — test scaffolding, no production impl."},
+    {"text": ".UNSTATED.md file was created", "passed": true, "evidence": "specs/link_extractor.UNSTATED.md exists as a dedicated file separate from spec.md, with 14 entries U-1..U-14."},
+    {"text": ".UNSTATED.md lists ≥3 distinct unstated inferences", "passed": true, "evidence": "14 entries — well past the threshold. Each has artifact + location + inferred value + why-not-cited + disposition fields."},
+    {"text": ".UNSTATED.md or asked questions cover at least 2 of: timeout, link definition, redirect handling, encoding, network failure, output format, relative-vs-absolute URLs", "passed": true, "evidence": "U-1 link defn + U-2 abs-vs-rel + U-3 output container + U-6 network failure + U-7 timeout + U-8 redirects + U-9 encoding — 7 of 7 covered."},
+    {"text": "Spec lines that did make it in cite [source: user-stmt-N] or are flagged", "passed": true, "evidence": "Every spec line ends with [source: user-stmt-N] citation. Out-of-scope line explicitly cites user-stmt-8 + points to .UNSTATED.md. Trace-or-flag discipline observed."}
+  ],
+  "summary": {
+    "passed": 5,
+    "total": 5,
+    "patch_target_hit": true,
+    "patch_notes": "Subagent declared NON-INTERACTIVE mode at top of run per new SKILL.md 'Invocation mode' section. Every STOP_AND_LOG routed to a .UNSTATED.md entry (U-1..U-9, U-12, U-14). Zero hangs. Patch worked — the gap surfaced by iteration-2 K-with-skill's subagent report ('STOP_AND_LOG / non-interactive mode is not in SKILL.md itself') is closed."
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "expectations": [
+    {"text": "Did NOT write impl code (only contract sentinels + behavioral umbrella)", "passed": true, "evidence": "src/types.py — fetch_links raises NotImplementedError. Protocol + exceptions only."},
+    {"text": ".UNSTATED.md file was created", "passed": false, "evidence": "NO separate .UNSTATED.md file exists. 13 inferences are embedded in spec.md as a 'Inferred decisions (UNSTATED)' table. Sweep-as-distinct-artifact discipline absent — the inferences sit inside the same doc reviewers approve, making them easy to skim past."},
+    {"text": ".UNSTATED.md lists ≥3 distinct unstated inferences", "passed": false, "evidence": "Assertion requires .UNSTATED.md. Baseline put 13 inferences in spec.md table instead. By content count would pass; by artifact discipline fails."},
+    {"text": ".UNSTATED.md or asked questions cover at least 2 of: timeout, link definition, redirect handling, encoding, network failure, output format, relative-vs-absolute URLs", "passed": true, "evidence": "Spec's inferred-decisions table covers all 7 (link defn, abs/rel, timeout, redirects, encoding, network failure, output type). Content present despite wrong artifact."},
+    {"text": "Spec lines that did make it in cite [source: user-stmt-N] or are flagged", "passed": false, "evidence": "Baseline spec has no [source: user-stmt-N] citation discipline. Inferences are flagged in a table; the rest of the spec is uncited."}
+  ]
+}

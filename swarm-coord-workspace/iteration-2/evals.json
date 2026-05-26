@@ -1,0 +1,24 @@
+{
+  "skill_name": "swarm",
+  "iteration": 2,
+  "evals": [
+    {
+      "id": "I-design-leak",
+      "prompt": "I want to build a CLI tool that converts CSV files to JSON. Help me plan it out.",
+      "expected_output": "Skill restates intent and waits for confirmation. Does NOT silently pick CSV dialect (delimiter, quoting, header handling) or JSON output shape (array-of-objects vs newline-delimited, key naming). Either asks the user or flags each pick in .UNSTATED.md.",
+      "files": []
+    },
+    {
+      "id": "J-contract-overreach",
+      "prompt": "I want to build a simple URL shortener. The user submits a long URL and gets back a short slug. Visiting the short slug redirects to the long URL. That's it.",
+      "expected_output": "Type contract has at most ~3-4 symbols (shorten function, expand/lookup function, maybe URL/Slug type). Skill does NOT invent extra symbols like Analytics, RateLimit, ExpiryPolicy, User, Session, etc. that the spec does not directly imply. Any extra concept that creeps in should be flagged in .UNSTATED.md, not silently added to the contract.",
+      "files": []
+    },
+    {
+      "id": "K-unstated-sweep",
+      "prompt": "Build a function that fetches a webpage and extracts all the links.",
+      "expected_output": ".UNSTATED.md exists and lists multiple unstated inferences: timeout default, what counts as a 'link' (a href only? img src? script src?), how to handle redirects, encoding/character set handling, what happens on non-HTML response, what happens on network failure, output format (list of strings? structured?), absolute vs relative URLs. At minimum 3 entries.",
+      "files": []
+    }
+  ]
+}

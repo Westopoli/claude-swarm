@@ -1,0 +1,9 @@
+{
+  "expectations": [
+    {"text": "Did NOT write impl code (only contract sentinels + behavioral umbrella)", "passed": true, "evidence": "src/types.py has 1 symbol extract_links with raise NotImplementedError. No impl. Umbrella uses a real loopback HTTP server in test setup but no production impl code."},
+    {"text": ".UNSTATED.md file was created", "passed": true, "evidence": "specs/link_extractor.UNSTATED.md exists with 13 distinct entries U-1..U-13."},
+    {"text": ".UNSTATED.md lists ≥3 distinct unstated inferences", "passed": true, "evidence": "13 entries — well past the threshold. Subjects: function name, output type, link scope, abs vs rel, HTTP semantics, fetch failure, library choice, encoding, non-HTML, spec name, OOS, fixture, dedup."},
+    {"text": ".UNSTATED.md or asked questions cover at least 2 of: timeout, link definition, redirect handling, encoding, network failure, output format, relative-vs-absolute URLs", "passed": true, "evidence": "U-3 link definition + U-4 abs-vs-rel + U-5 timeout/redirects + U-6 fetch failure + U-8 encoding + U-2 output format — 6 of 7 covered."},
+    {"text": "Spec lines that did make it in cite [source: user-stmt-N] or are flagged", "passed": true, "evidence": "Spec uses [source: user-stmt-N] citations per skill step 4. Untraceable content migrated to .UNSTATED.md per step-10 self-scan."}
+  ]
+}

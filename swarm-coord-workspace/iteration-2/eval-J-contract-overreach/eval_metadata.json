@@ -1,0 +1,12 @@
+{
+  "eval_id": "J-contract-overreach",
+  "eval_name": "contract-overreach-url-shortener",
+  "prompt": "I want to build a simple URL shortener. The user submits a long URL and gets back a short slug. Visiting the short slug redirects to the long URL. That's it.",
+  "assertions": [
+    {"id": "no_impl_code", "text": "Did NOT write any impl code (only contract sentinels + behavioral umbrella)"},
+    {"id": "contract_minimal", "text": "Type contract has ≤5 symbols total"},
+    {"id": "no_analytics_creep", "text": "Contract does NOT include Analytics, RateLimit, ExpiryPolicy, User, Session, Auth, or similar unrequested concepts as top-level symbols"},
+    {"id": "extras_flagged", "text": "Any concept the skill considered adding beyond core shorten/lookup is either asked about or flagged in .UNSTATED.md"},
+    {"id": "unstated_exists", "text": ".UNSTATED.md file was created"}
+  ]
+}

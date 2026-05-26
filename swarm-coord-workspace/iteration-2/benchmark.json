@@ -1,0 +1,53 @@
+{
+  "skill_name": "swarm",
+  "iteration": 2,
+  "configurations": [
+    {
+      "name": "with_skill",
+      "pass_rate": {"mean": 1.0, "stddev": 0.0, "n": 3},
+      "assertions_passed": 15,
+      "assertions_total": 15,
+      "time_seconds": {"mean": 174.9, "stddev": 25.0, "n": 3},
+      "tokens": {"mean": 39063, "stddev": 1666, "n": 3}
+    },
+    {
+      "name": "without_skill",
+      "pass_rate": {"mean": 0.733, "stddev": 0.115, "n": 3},
+      "assertions_passed": 11,
+      "assertions_total": 15,
+      "time_seconds": {"mean": 110.3, "stddev": 13.0, "n": 3},
+      "tokens": {"mean": 26019, "stddev": 217, "n": 3}
+    }
+  ],
+  "delta": {
+    "pass_rate": "+0.267 (skill catches 4 failures baseline missed)",
+    "time_seconds": "+64.6s (skill spends ~58% more time on ceremony — expected)",
+    "tokens": "+13044 (skill is +50% tokens — expected ceremony cost)"
+  },
+  "evals": [
+    {
+      "id": "I-design-leak",
+      "with_skill_passed": 5,
+      "with_skill_total": 5,
+      "without_skill_passed": 4,
+      "without_skill_total": 5,
+      "failure": "Baseline lacks [source: user-stmt-N] traceability — locked design picks (RFC 4180 CSV defaults, JSON array shape) into spec body before flagging them."
+    },
+    {
+      "id": "J-contract-overreach",
+      "with_skill_passed": 5,
+      "with_skill_total": 5,
+      "without_skill_passed": 4,
+      "without_skill_total": 5,
+      "failure": "Baseline silently invented CollisionError + SlugNotFoundError + slug-generation policy AND baked them into the type contract before flagging them. Skill kept the contract at 3 symbols and routed all 4 picks to .UNSTATED.md."
+    },
+    {
+      "id": "K-unstated-sweep",
+      "with_skill_passed": 5,
+      "with_skill_total": 5,
+      "without_skill_passed": 3,
+      "without_skill_total": 5,
+      "failure": "Baseline did NOT produce a separate .UNSTATED.md — embedded 13 inferences inside spec.md as a table. Same content, wrong artifact: inferences sit inside the doc reviewers approve, easy to skim past. Skill's step-10 produces a dedicated audit-target file."
+    }
+  ]
+}

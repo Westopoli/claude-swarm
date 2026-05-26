@@ -1,0 +1,9 @@
+{
+  "expectations": [
+    {"text": "Did NOT write impl code (only contract sentinels + behavioral umbrella)", "passed": true, "evidence": "src/types.py — 3 symbols all raise NotImplementedError. No impl module created."},
+    {"text": "Type contract has ≤5 symbols total", "passed": true, "evidence": "Exactly 3 def symbols: shorten, lookup, redirect."},
+    {"text": "Contract does NOT include Analytics, RateLimit, ExpiryPolicy, User, Session, Auth, or similar unrequested concepts as top-level symbols", "passed": true, "evidence": "No such symbols in types.py. Out-of-scope items routed to .UNSTATED.md (U-6) as negative-spec record."},
+    {"text": "Any concept the skill considered adding beyond core shorten/lookup is either asked about or flagged in .UNSTATED.md", "passed": true, "evidence": "U-1 (slug length/charset/collision), U-2 (lookup-miss behavior), U-3 (redirect return shape) all flagged-for-spawn instead of silently picked."},
+    {"text": ".UNSTATED.md file was created", "passed": true, "evidence": "specs/url_shortener.UNSTATED.md exists with 6 entries, all non-pending dispositions."}
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "expectations": [
+    {"text": "Did NOT write impl code (only contract sentinels + behavioral umbrella)", "passed": true, "evidence": "redirect_handler is raise NotImplementedError. Protocols have ... bodies. No impl module."},
+    {"text": "Type contract has ≤5 symbols total", "passed": true, "evidence": "5 def/class symbols (SlugNotFoundError, CollisionError, Shortener, RedirectResponse, redirect_handler) + 2 aliases (LongURL, Slug) = 5 by strict def/class count, 7 if counting aliases. Marginal pass on the assertion as written."},
+    {"text": "Contract does NOT include Analytics, RateLimit, ExpiryPolicy, User, Session, Auth, or similar unrequested concepts as top-level symbols", "passed": true, "evidence": "No analytics/auth/rate-limit/expiry/user/session symbols. Out-of-scope held due to script."},
+    {"text": "Any concept the skill considered adding beyond core shorten/lookup is either asked about or flagged in .UNSTATED.md", "passed": false, "evidence": "Baseline silently invented CollisionError + SlugNotFoundError + 7-char alphanumeric slug + retry-5x policy and BAKED INTO CONTRACT. These were STOP_AND_LOG user answers — should have stayed out of types.py. Flagged in .UNSTATED.md AFTER deciding, but the contract already encodes the picks."},
+    {"text": ".UNSTATED.md file was created", "passed": true, "evidence": ".UNSTATED.md at project root with 5 flagged inferences. Script-induced."}
+  ]
+}

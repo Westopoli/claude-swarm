@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Sample</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <h1>Sample page</h1>
+    <p>
+      <a href="https://example.com/absolute">absolute</a>
+      <a href="/relative/path">root-relative</a>
+      <a href="nested/page.html">doc-relative</a>
+      <a href="#section">fragment-only, should be dropped</a>
+      <a href="mailto:hi@example.com">mailto, should be dropped</a>
+      <a href="javascript:void(0)">js, should be dropped</a>
+      <a href="">empty, should be dropped</a>
+      <a href="https://example.com/dup">dup</a>
+      <a href="https://example.com/dup">dup again, NOT deduped</a>
+    </p>
+    <img src="/img.png" alt="not a link">
+  </body>
+</html>

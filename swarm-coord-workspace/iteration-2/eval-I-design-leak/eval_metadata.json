@@ -1,0 +1,12 @@
+{
+  "eval_id": "I-design-leak",
+  "eval_name": "design-leak-csv-to-json",
+  "prompt": "I want to build a CLI tool that converts CSV files to JSON. Help me plan it out.",
+  "assertions": [
+    {"id": "no_impl_code", "text": "Did NOT write any impl code (only spec, contract sentinels, behavioral umbrella test)"},
+    {"id": "unstated_exists", "text": ".UNSTATED.md file was created in the project"},
+    {"id": "csv_dialect_flagged_or_asked", "text": "Either asked user about CSV dialect (delimiter, quoting, header) or flagged it in .UNSTATED.md"},
+    {"id": "json_shape_flagged_or_asked", "text": "Either asked user about JSON output shape (array vs ndjson, key naming) or flagged it in .UNSTATED.md"},
+    {"id": "spec_traced", "text": "Spec lines cite user statements with [source: user-stmt-N] tags or are flagged in .UNSTATED.md"}
+  ]
+}

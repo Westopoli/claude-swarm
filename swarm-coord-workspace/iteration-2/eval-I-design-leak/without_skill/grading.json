@@ -1,0 +1,9 @@
+{
+  "expectations": [
+    {"text": "Did NOT write any impl code (only spec, contract sentinels, behavioral umbrella test)", "passed": true, "evidence": "src/types.py uses Protocol stubs with docstrings only. No impl. 3 symbols (CsvReader, JsonSerializer, Cli)."},
+    {"text": ".UNSTATED.md file was created in the project", "passed": true, "evidence": "specs/.UNSTATED.md exists with 4 flagged inferences. Script-induced — USER_RESPONSES.md said accept-as-flagged."},
+    {"text": "Either asked user about CSV dialect (delimiter, quoting, header) or flagged it in .UNSTATED.md", "passed": true, "evidence": "RFC 4180 / csv.DictReader defaults picked + flagged. But baseline made the design choice (defaults locked in spec body, not held open)."},
+    {"text": "Either asked user about JSON output shape (array vs ndjson, key naming) or flagged it in .UNSTATED.md", "passed": true, "evidence": "JSON array of objects with indent=2 chosen + flagged. Choice locked in spec, only labeled as flagged."},
+    {"text": "Spec lines cite user statements with [source: user-stmt-N] tags or are flagged in .UNSTATED.md", "passed": false, "evidence": "Baseline spec has no [source: user-stmt-N] citations — traceability discipline absent. The four design picks are flagged in a separate table but the rest of the spec is uncited."}
+  ]
+}

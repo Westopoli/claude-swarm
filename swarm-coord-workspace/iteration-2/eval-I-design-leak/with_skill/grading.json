@@ -1,0 +1,9 @@
+{
+  "expectations": [
+    {"text": "Did NOT write any impl code (only spec, contract sentinels, behavioral umbrella test)", "passed": true, "evidence": "src/types.py has 1 symbol, body is raise NotImplementedError. No other src/ files. Umbrella is assertion-only."},
+    {"text": ".UNSTATED.md file was created in the project", "passed": true, "evidence": "specs/csv-to-json.UNSTATED.md exists, 6 entries U-1..U-6 with structured frontmatter (Artifact / Location / Inferred value / Why / Disposition)."},
+    {"text": "Either asked user about CSV dialect (delimiter, quoting, header) or flagged it in .UNSTATED.md", "passed": true, "evidence": "U-1 entry: CSV dialect — delimiter, quoting, header row. Flagged-for-spawn."},
+    {"text": "Either asked user about JSON output shape (array vs ndjson, key naming) or flagged it in .UNSTATED.md", "passed": true, "evidence": "U-2 (JSON output shape) + U-3 (key naming convention). Both flagged-for-spawn."},
+    {"text": "Spec lines cite user statements with [source: user-stmt-N] tags or are flagged in .UNSTATED.md", "passed": true, "evidence": "Spec uses [source: user-stmt-N] citations per skill step 4. Self-scan migrated uncited lines to .UNSTATED.md (U-5 contract return type, U-6 CLI entry point)."}
+  ]
+}
