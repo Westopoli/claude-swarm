@@ -11,7 +11,7 @@ The cascade exists because a single agent attempting a large plan loses resoluti
 1. **Solo-implementation.** Parent agent receives "implement X" and starts editing source files itself instead of decomposing. Most common trigger: the invocation is phrased as an implementation request rather than a decomposition request, and the skill fails to reframe it.
 2. **Plan drift from strategy doc.** Spec / decomposition silently disagrees with the strategy doc and the planning agent self-certifies "no conflict" without producing evidence. The skill must force a line-by-line comparison, not accept self-certification.
 3. **Per-leaf resolution loss.** Leaf scope grows past what one agent can handle in one context window. Small coding mistakes inside an overstretched leaf cascade into the next leaf's input. Bite-size = the metric.
-4. **Cascade-mistake leak-through.** Across N sequential merges, a single silent regression slips through and propagates. The merge protocol must catch it on the merge where it appears, not three merges later.
+4. **Cascade-mistake leak-through.** Across N sequential admissions, a single silent regression slips through and propagates. The post-review protocol must catch it on the admission where it appears, not three admissions later.
 
 ### What "good performance" looks like
 
@@ -52,12 +52,12 @@ Future iterations must include at least one eval in **each** of these categories
 - With_skill must **report the contradiction with both quotes side-by-side** and halt at spec-gate.
 - Baseline likely produces "spec looks compliant" without quoting either doc — the failure mode this skill exists to prevent.
 
-### D. Cascade-mistake leak-through (`/swarm-merge`)
+### D. Cascade-mistake leak-through (`/swarm-post-review`)
 
-- 5 sequential merge candidates in one prompt, each with DIFF + UMBRELLA_BEFORE + UMBRELLA_AFTER.
-- Merge 3 introduces a silent regression: umbrella passes drop from prior count. Merges 1, 2, 4, 5 are clean improvements.
-- With_skill must REVERT exactly merge 3 and MERGE the other four.
-- Baseline likely waves merge 3 through ("4 of 5 passing, looks fine") or rejects clean merges (eval-3 from iter-1).
+- 5 sequential admission candidates in one prompt, each with DIFF + UMBRELLA_BEFORE + UMBRELLA_AFTER.
+- Candidate 3 introduces a silent regression: umbrella passes drop from prior count. Candidates 1, 2, 4, 5 are clean improvements.
+- With_skill must REVERT exactly candidate 3 and ADMIT the other four.
+- Baseline likely waves candidate 3 through ("4 of 5 passing, looks fine") or rejects clean admissions (eval-3 from iter-1).
 
 ## Grading
 

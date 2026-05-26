@@ -7,7 +7,7 @@ description: First command in the TDD parallel-agent cascade. Discovery step —
 
 This skill is the **first** command in the cascade. It is the entry point for users who are starting a task with no prior documentation (or only partial documentation). The output of this skill is three artifacts on disk — a spec file, a type contract file, and a failing umbrella test — each user-approved at an explicit gate, plus an `.UNSTATED.md` companion log for everything the skill inferred that the user did not directly state.
 
-The companion theory lives at `~/.claude/skills/swarm-shared/references/playbook.md`. The downstream decomposition step is `/swarm-spawn`. The audit step is `/swarm-review`. The merge step is `/swarm-merge`.
+The companion theory lives at `~/.claude/skills/swarm-shared/references/playbook.md`. The downstream decomposition step is `/swarm-spawn`. The pre-leaf audit step is `/swarm-review`. The post-leaf admission step is `/swarm-post-review`.
 
 ## Where /swarm fits
 
@@ -21,7 +21,7 @@ The companion theory lives at `~/.claude/skills/swarm-shared/references/playbook
                   Hands off to /swarm-review.
 /swarm-review   → audits briefs against invariants. Reports PASS/FAIL per brief.
 [spawn leaves]  → one sub-agent per brief, in parallel.
-/swarm-merge    → runs once per leaf after the leaf reports green. Gated merge.
+/swarm-post-review → runs once per leaf after the leaf reports green. Gated admission.
 ```
 
 **Inputs to /swarm:** nothing required. The user invokes /swarm at the start of a task. The skill's step-0 intake asks the user what they want to build and whether any prior documentation exists.
@@ -250,7 +250,7 @@ End your turn with exactly this instruction to the user:
 - Auto-invoke `/swarm-spawn` at the end. Hand-off is an *instruction to the user*, not a side effect. The parent decides when to advance to decomposition.
 - Edit any file outside the three artifact paths (spec, contract, umbrella) and their `.UNSTATED.md` companion. In particular, do not create or modify files in `briefs_dir/` — that is `/swarm-spawn`'s territory.
 - Continue past a review gate (steps 2, 5, 7, 9, 10) without explicit approval **in interactive mode**. Silence ≠ approval. If the user is unresponsive in interactive mode, stop and wait. **In non-interactive mode**, log the unresolved gate as an `.UNSTATED.md` entry with Disposition `flagged-for-spawn` and continue — do not hang waiting for a human who is not there.
-- Run `/swarm-spawn`, `/swarm-review`, or `/swarm-merge` itself. /swarm's job ends at step 11 — "Hand off."
+- Run `/swarm-spawn`, `/swarm-review`, or `/swarm-post-review` itself. /swarm's job ends at step 11 — "Hand off."
 
 ## Why this skill exists
 

@@ -1,6 +1,6 @@
 # claude-swarm config
 
-Each project that uses the cascade skills places a `.claude-swarm.toml` at its project root. All three skills (`swarm`, `swarm-review`, `swarm-merge`) read it. Missing file is fine — defaults apply.
+Each project that uses the cascade skills places a `.claude-swarm.toml` at its project root. All three skills (`swarm`, `swarm-review`, `swarm-post-review`) read it. Missing file is fine — defaults apply.
 
 ## Schema
 
@@ -17,7 +17,7 @@ type_contract_path = "src/<pkg>/types.py"
 # Test + dependency-map commands. The skill shells out exactly as written.
 
 umbrella_test_cmd = "pytest tests/umbrella.py"
-# Optional: behavioral integration test run by /swarm-merge at queue completion.
+# Optional: behavioral integration test run by /swarm-post-review at queue completion.
 # Distinct from umbrella_test_cmd (which is per-leaf-isolation). Catches the
 # failure mode where every leaf's umbrella was a source-grep pattern but the
 # integrated behavior is still broken.

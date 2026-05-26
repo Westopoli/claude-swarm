@@ -52,9 +52,9 @@ test_assertion_budget: <int>
 #     verify: "grep -q 'def wave2_gate' src/gates.py"
 #   - name: "damage.py has cover term"
 #     verify: "grep -qE '\\(1\\.0 - cover\\)' simulation/damage.py"
-# Optional: escalation triggers with `detect:` commands. /swarm-merge G6
-# runs each detect command at merge time; if any exit 0 (match found) and
-# no `.swarm/escalations/leaf-NN.md` exists, the merge blocks.
+# Optional: escalation triggers with `detect:` commands. /swarm-post-review G6
+# runs each detect command at admission time; if any exit 0 (match found) and
+# no `.swarm/escalations/leaf-NN.md` exists, the admission blocks.
 # escalation_triggers:
 #   - name: "signature_change"
 #     detect: "! diff <(grep -E '^def ' src/module.py.bak) <(grep -E '^def ' $STAGING_DIR/src/module.py) > /dev/null"
@@ -74,7 +74,7 @@ Run `<test command>` for this test_file. Confirm RED. Implement in impl_file
 only. Confirm GREEN. Write your final `test_file` and `impl_file` to
 `.swarm/pending/leaf-NN/` mirroring their paths from the project root
 (e.g. `src/cache.py` → `.swarm/pending/leaf-03/src/cache.py`). Stop.
-Do not copy files to their real destinations — `/swarm-merge` does that after gating.
+Do not copy files to their real destinations — `/swarm-post-review` does that after gating.
 
 ## Escalation triggers
 
@@ -95,7 +95,7 @@ If at any point during your run you had to **infer** something the brief did not
 - **<thing>**: <inferred value> — source: <which spec line / contract symbol / file you looked at, or "no source — pure guess">
 ```
 
-Do not bury inferences inside impl comments. The parent runs an assumption-sweep across all leaves before any merge — that sweep only sees the .ASSUMPTIONS.md files. An undocumented inference cannot be swept.
+Do not bury inferences inside impl comments. The parent runs an assumption-sweep across all leaves before any admission — that sweep only sees the .ASSUMPTIONS.md files. An undocumented inference cannot be swept.
 
 ## Sibling-assumption read (do this before logging)
 
@@ -157,11 +157,11 @@ If the brief is ambiguous on a point that materially shapes your impl (an API sh
 
 4. **You may not delete a question file you wrote** — it is part of the audit trail. Status flips happen by the parent writing an answer.
 
-If the question is not resolved by merge time, `/swarm-merge` G3 blocks: either parent must answer or you must keep the `unanswered: true` tag (which makes the inference explicit and reviewable).
+If the question is not resolved by admission time, `/swarm-post-review` G3 blocks: either parent must answer or you must keep the `unanswered: true` tag (which makes the inference explicit and reviewable).
 
 ## Contract-proposal protocol (when a parent-owned file must change)
 
-If satisfying your brief requires a change to a parent-owned file (a type contract field, a fixture, a config), do **not** edit it. G1 will reject your merge. Instead:
+If satisfying your brief requires a change to a parent-owned file (a type contract field, a fixture, a config), do **not** edit it. G1 will reject your admission. Instead:
 
 1. Write `.swarm/proposals/leaf-NN.md`:
 
@@ -185,11 +185,11 @@ If satisfying your brief requires a change to a parent-owned file (a type contra
    <how you will proceed — usually "re-spawn with revised brief">
    ```
 
-2. Continue working on the parts of your impl that do not depend on the proposed change. The dependent parts stay incomplete; this is intentional — the test referencing the missing piece will stay RED and the parent will see that on merge attempt.
+2. Continue working on the parts of your impl that do not depend on the proposed change. The dependent parts stay incomplete; this is intentional — the test referencing the missing piece will stay RED and the parent will see that on admission attempt.
 
 3. The parent will set status to `accepted` (after applying the diff to the target file), `rejected` (you re-plan), or `superseded` (a related leaf already covered it).
 
-4. `/swarm-merge` G4 blocks any leaf whose proposal is still `pending` at merge time, or whose proposal is marked `accepted` but the target file does not actually contain the change.
+4. `/swarm-post-review` G4 blocks any leaf whose proposal is still `pending` at admission time, or whose proposal is marked `accepted` but the target file does not actually contain the change.
 
 Never copy the parent-owned file into your impl as a workaround. Duplication is silent drift; the proposal protocol is how you make the need visible.
 ```
@@ -210,7 +210,7 @@ Never copy the parent-owned file into your impl as a workaround. Duplication is 
 | `wave` (optional) | Integer ≥ 1. Default 1. Cross-wave leaves are sequenced, not parallel. |
 | `impl_line_budget`, `test_assertion_budget` | Set, ≤ project max from `.claude-swarm.toml`. |
 | `codebase_preconditions` (optional) | Each `verify:` command exits 0. If task prose contains claim-words ("already", "in place", "exists as of", "previously added") without backing preconditions, /swarm-review heuristic-warns. |
-| `escalation_triggers` (optional) | Each `detect:` command (if present) is well-formed shell. Runtime check is /swarm-merge G6. |
+| `escalation_triggers` (optional) | Each `detect:` command (if present) is well-formed shell. Runtime check is /swarm-post-review G6. |
 | Task prose | No ambiguous verbs from the configured list. |
 
 A brief that fails any of these checks blocks the entire decomposition. The parent restructures and re-emits before any leaf is spawned.

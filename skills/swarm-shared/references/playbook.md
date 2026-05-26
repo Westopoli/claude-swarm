@@ -1,6 +1,6 @@
 # TDD Cascade — Playbook
 
-Condensed theory shared by the `swarm`, `swarm-review`, and `swarm-merge` skills.
+Condensed theory shared by the `swarm`, `swarm-review`, and `swarm-post-review` skills.
 
 This file is the skill's portable summary. If a project ships its own playbook, that one wins on policy questions and these skills should defer to it.
 
@@ -24,7 +24,7 @@ Shared type contract (type_contract_path)
 Umbrella test
   ↓ written by parent, must fail (RED), encodes all acceptance criteria
 Decomposition into leaf tasks (briefs_dir)
-  ↓ parent slices, assigns, never touches again until merge
+  ↓ parent slices, assigns, never touches again until admission
 ```
 
 If the project's playbook adds a gate (e.g., an extra compliance check between spec and type contract, configured via `[gates].extra_spec_gate_cmds`), respect it. The cascade above is the minimum.
@@ -74,7 +74,7 @@ If the slice exceeds the budget, it is two leaves, not one. The parent re-slices
 
 ### Parent
 
-Writes the spec; writes the shared type contract; writes the umbrella test (and confirms RED); slices into leaf briefs; merges leaf diffs one at a time; reruns the umbrella after each merge. Never writes impl code.
+Writes the spec; writes the shared type contract; writes the umbrella test (and confirms RED); slices into leaf briefs; admits leaf diffs one at a time; reruns the umbrella after each admission. Never writes impl code.
 
 ### Leaf
 
@@ -84,7 +84,7 @@ Receives one assignment: one test file, one impl file, the spec line range it mu
 
 ## Intake interview and the assumption log
 
-Every cascade skill (`/swarm`, `/swarm-spawn`, `/swarm-review`, `/swarm-merge`) begins with an **intake interview**. The interview lives in the skill's own SKILL.md "Step 0" section. Its purpose: lock the scope of the batch *before* any procedure runs, because the most common cascade failure mode traces post-mortem to one of the intake questions being silently inferred by the parent agent instead of stated by the user.
+Every cascade skill (`/swarm`, `/swarm-spawn`, `/swarm-review`, `/swarm-post-review`) begins with an **intake interview**. The interview lives in the skill's own SKILL.md "Step 0" section. Its purpose: lock the scope of the batch *before* any procedure runs, because the most common cascade failure mode traces post-mortem to one of the intake questions being silently inferred by the parent agent instead of stated by the user.
 
 **Interactive invocation:** ask the questions, wait for answers, restate scope, confirm.
 
@@ -95,11 +95,11 @@ Every cascade skill (`/swarm`, `/swarm-spawn`, `/swarm-review`, `/swarm-merge`) 
 | `/swarm` | `<spec_dir>/<name>.UNSTATED.md` |
 | `/swarm-spawn` | `<briefs_dir>/ASSUMPTIONS.md` |
 | `/swarm-review` | `<briefs_dir>/REVIEW_ASSUMPTIONS.md` |
-| `/swarm-merge` | `<briefs_dir>/leaf-NN.MERGE_ASSUMPTIONS.md` |
+| `/swarm-post-review` | `<briefs_dir>/leaf-NN.POST_REVIEW_ASSUMPTIONS.md` |
 
 Leaf agents follow the same convention: if a leaf had to infer anything, write `<briefs_dir>/leaf-NN.ASSUMPTIONS.md`.
 
-After all leaves report green and before any `/swarm-merge` runs, the parent runs the **assumption-sweep** (procedure in `/swarm-spawn`'s SKILL.md). The sweep reads every log, classifies entries against the spec, the strategy doc, and the type contract, and surfaces drift with a damage assessment and a patch suggestion. The user makes the call on patch vs. redo. Default bias: patch — redo costs an afternoon, a patch usually costs minutes.
+After all leaves report green and before any `/swarm-post-review` runs, the parent runs the **assumption-sweep** (procedure in `/swarm-spawn`'s SKILL.md). The sweep reads every log, classifies entries against the spec, the strategy doc, and the type contract, and surfaces drift with a damage assessment and a patch suggestion. The user makes the call on patch vs. redo. Default bias: patch — redo costs an afternoon, a patch usually costs minutes.
 
 The reason this is a written convention rather than a free-form check: an LLM auditing its own inferences in the same turn rarely catches them. A separate sweep, against persisted logs, with explicit categories (contradicts-spec / contradicts-strategy-doc / cross-leaf / fabricated / compounded), forces structured re-examination.
 
@@ -132,7 +132,7 @@ Record the seam-axis decision in `decisions.md` with an explicit "review at wave
 
 ### When not to do a prep step
 
-If sequential waves cost only 1–2 merges of serialization, that is cheaper than a prep-step split. Reserve prep steps for cases where the serialization cost is high (many sequential leaves on the same file over multiple waves) or where the fat file is a recurrence risk (every new wave hits the same collision).
+If sequential waves cost only 1–2 admissions of serialization, that is cheaper than a prep-step split. Reserve prep steps for cases where the serialization cost is high (many sequential leaves on the same file over multiple waves) or where the fat file is a recurrence risk (every new wave hits the same collision).
 
 ### Long-term accumulation risk
 
@@ -148,15 +148,15 @@ Leaves never message each other directly. The cascade is a tree: parent at the r
 
 Leaves may **read** (never write) other leaves' `leaf-NN.ASSUMPTIONS.md` files before logging their own inferences. The brief boilerplate instructs leaves to grep sibling logs for related entries and either adopt the sibling's value (compatible) or escalate (contradictory) instead of silently logging a clashing assumption.
 
-Catches drift at leaf-time instead of at the parent's post-merge sweep. The sweep still runs — this is an early filter that reduces what survives to the sweep.
+Catches drift at leaf-time instead of at the parent's post-admission sweep. The sweep still runs — this is an early filter that reduces what survives to the sweep.
 
-Failure mode prevented: two leaves silently inferring incompatible shapes of the same shared interface. Today: caught at merge-time, after both wrote code. With sibling-read: caught at leaf-time, before either commits to code.
+Failure mode prevented: two leaves silently inferring incompatible shapes of the same shared interface. Today: caught at admission-time, after both wrote code. With sibling-read: caught at leaf-time, before either commits to code.
 
 ### 2. Question ledger
 
 Leaves publish questions to `.swarm/questions/leaf-NN-Q<n>.md` instead of inferring silently. The parent answers asynchronously at `.swarm/answers/leaf-NN-Q<n>.md`. The leaf proceeds under a best-guess inference if no answer arrives; the inference is recorded with an explicit `unanswered: true` tag.
 
-`/swarm-merge` G3 enforces resolution before merge: every published question must either have an answer or be acknowledged as unanswered in ASSUMPTIONS.
+`/swarm-post-review` G3 enforces resolution before admission: every published question must either have an answer or be acknowledged as unanswered in ASSUMPTIONS.
 
 This is forensic, not synchronous. Leaves do not block on questions — they record them and continue under best-guess. The gate converts "silent inference" into "logged inference with explicit parent acknowledgement." If the parent's answer contradicts the leaf's guess, G3 surfaces the contradiction by name.
 
@@ -166,16 +166,16 @@ Failure mode prevented: a leaf needs to know X, brief is ambiguous, leaf infers 
 
 When a leaf needs a parent-owned file changed to satisfy its brief, it writes `.swarm/proposals/leaf-NN.md` instead of editing the file (which G1 would reject) or duplicating the file (which silent drift would absorb). The proposal contains the proposed diff and the reason it is required.
 
-The parent reviews and sets `status: accepted | rejected | superseded`. Accepted proposals require the parent to first apply the diff to the target file; `/swarm-merge` G4 verifies the change is actually present, not just marked accepted.
+The parent reviews and sets `status: accepted | rejected | superseded`. Accepted proposals require the parent to first apply the diff to the target file; `/swarm-post-review` G4 verifies the change is actually present, not just marked accepted.
 
-Failure mode prevented: leaf needs a type contract extended. Today the leaf either escalates and stalls the wave or invents a duplicate type. With proposals, the request is visible, the change is applied by the parent (preserving G1), and the gate ensures application before merge.
+Failure mode prevented: leaf needs a type contract extended. Today the leaf either escalates and stalls the wave or invents a duplicate type. With proposals, the request is visible, the change is applied by the parent (preserving G1), and the gate ensures application before admission.
 
 ### What is intentionally not built
 
 - **Direct leaf-to-leaf messaging.** Would make the cascade a graph; would destroy regression attribution; would create deadlock and ordering bugs. Not added under any pretext.
 - **Shared mutable state owned by N leaves.** Would break file-ownership invariant (the first invariant). Not added.
-- **Synchronous waits.** A leaf cannot block on parent action; it proceeds under best-guess and the gate checks consistency at merge time. Async by design.
-- **Cross-leaf reads of pending impl code.** Leaves may read sibling ASSUMPTIONS (immutable once published, structurally separate from impl) but never sibling impl in `.swarm/pending/`. Coupling merge order to file resolution would create dependency hell.
+- **Synchronous waits.** A leaf cannot block on parent action; it proceeds under best-guess and the gate checks consistency at admission time. Async by design.
+- **Cross-leaf reads of pending impl code.** Leaves may read sibling ASSUMPTIONS (immutable once published, structurally separate from impl) but never sibling impl in `.swarm/pending/`. Coupling admission order to file resolution would create dependency hell.
 
 All three additions are strictly additive: each is a gate that, if turned off, reverts to the pre-coordination behavior. They do not change the cascade shape, the three invariants, or the parent-only-arbitrates rule.
 
@@ -183,9 +183,9 @@ All three additions are strictly additive: each is a gate that, if turned off, r
 
 ## Staging is the only canonical mode
 
-Leaves write to `.swarm/pending/leaf-NN/`. The skill copies from staging to real at merge time and only if every gate passes. There is no override that lets a leaf "write to real to save a step" — across session compacts, parallel agents, and audit trails, the staging dir is the only thing that preserves provenance. A workflow that lets leaves write directly to real for any reason re-introduces three failure modes simultaneously: ownership ambiguity (which leaf authored this hunk?), audit-log gaps (merge-log claims clean while HEAD says otherwise), and bypass of every G1–G6 gate (none of them run on direct writes).
+Leaves write to `.swarm/pending/leaf-NN/`. The skill copies from staging to real at admission time and only if every gate passes. There is no override that lets a leaf "write to real to save a step" — across session compacts, parallel agents, and audit trails, the staging dir is the only thing that preserves provenance. A workflow that lets leaves write directly to real for any reason re-introduces three failure modes simultaneously: ownership ambiguity (which leaf authored this hunk?), audit-log gaps (post-review-log claims clean while HEAD says otherwise), and bypass of every G1–G6 gate (none of them run on direct writes).
 
-`/swarm-merge` G5 (wave-snapshot integrity) is the post-hoc detection for this: if a leaf writes directly to real, the hash of that file at merge time will not match the wave-start snapshot, and G5 blocks the merge of any leaf in the wave. Detection, not prevention — but the gate forces the violation to surface before it propagates.
+`/swarm-post-review` G5 (wave-snapshot integrity) is the post-hoc detection for this: if a leaf writes directly to real, the hash of that file at admission time will not match the wave-start snapshot, and G5 blocks the admission of any leaf in the wave. Detection, not prevention — but the gate forces the violation to surface before it propagates.
 
 ---
 

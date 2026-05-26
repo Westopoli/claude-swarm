@@ -1,6 +1,6 @@
 ---
 name: swarm-spawn
-description: Decomposition step of the TDD parallel-agent cascade. Use whenever the user has a locked spec, type contract, and failing umbrella test ready, and wants to slice the spec into parallel leaf briefs. Triggers on phrases like "decompose this spec", "split into leaves", "spawn the leaves", "give me the leaf briefs", "set up the wave". This skill writes leaf brief files; it does not write impl code, does not draft specs, does not write umbrella tests, and does not spawn leaves. The discovery step (drafting spec/contract/umbrella from scratch) is `/swarm`. The audit step is `/swarm-review`. The merge step is `/swarm-merge`. Always pair with /swarm-review before spawning any leaf.
+description: Decomposition step of the TDD parallel-agent cascade. Use whenever the user has a locked spec, type contract, and failing umbrella test ready, and wants to slice the spec into parallel leaf briefs. Triggers on phrases like "decompose this spec", "split into leaves", "spawn the leaves", "give me the leaf briefs", "set up the wave". This skill writes leaf brief files; it does not write impl code, does not draft specs, does not write umbrella tests, and does not spawn leaves. The discovery step (drafting spec/contract/umbrella from scratch) is `/swarm`. The pre-leaf audit step is `/swarm-review`. The post-leaf admission step is `/swarm-post-review`. Always pair with /swarm-review before spawning any leaf.
 ---
 
 # /swarm-spawn — decompose spec into leaf briefs
@@ -23,8 +23,9 @@ The companion theory lives at `~/.claude/skills/swarm-shared/references/playbook
                      reads the report and either spawns leaves or sends briefs back to /swarm-spawn.
 [spawn leaves]     → one sub-agent per brief, in parallel. Each leaf stages outputs to
                      .swarm/pending/leaf-NN/ and reports green/red back to the parent.
-/swarm-merge       → runs once per leaf after the leaf reports green. Gates the merge; if all
-                     gates pass, copies staged files into place and appends to merge-log.md.
+/swarm-post-review → runs once per leaf after the leaf reports green. Gates the admission;
+                     if all gates pass, copies staged files into place and appends to
+                     post-review-log.md.
 ```
 
 **Inputs to /swarm-spawn (must exist before invocation):**
@@ -35,7 +36,7 @@ The companion theory lives at `~/.claude/skills/swarm-shared/references/playbook
 
 If any of these is missing, /swarm-spawn stops and recommends running `/swarm` first. `/swarm` is the discovery step — it walks the user through drafting the spec, the type contract, and the umbrella test with explicit user-confirmation gates. `/swarm-spawn`'s own job is decomposition, not drafting; trying to draft these inputs here is using the wrong skill (the right one is `/swarm`, one step upstream).
 
-**Output of /swarm-spawn:** brief files at `<briefs_dir>/leaf-NN.md`. Nothing else. /swarm-spawn does NOT spawn leaves, does NOT run /swarm-review, does NOT run /swarm-merge. The parent decides when each downstream step happens.
+**Output of /swarm-spawn:** brief files at `<briefs_dir>/leaf-NN.md`. Nothing else. /swarm-spawn does NOT spawn leaves, does NOT run /swarm-review, does NOT run /swarm-post-review. The parent decides when each downstream step happens.
 
 **Planning-only mode is the default.** /swarm-spawn always stops after writing briefs (step 7 — "Hand off"). There is no auto-spawn. Finishing /swarm-spawn = end of your turn. Wait for the user (or yourself, deliberately, in a later turn) to invoke /swarm-review.
 
@@ -95,7 +96,7 @@ Run these steps in order. Stop at the first failure and report.
 
 **Running a second cascade in the same repo?** If briefs from a prior cascade already exist in `briefs_dir`, stop before continuing and ask the user how to scope this run. Two safe patterns:
 
-- **Different `briefs_dir` per cascade** (recommended) — set `briefs_dir = ".swarm/<name>/briefs/"` in this run's config or via env: `CLAUDE_SWARM_BRIEFS_DIR=.swarm/<name>/briefs/ /swarm-spawn`. The two cascades stay isolated; merge-logs stay separate.
+- **Different `briefs_dir` per cascade** (recommended) — set `briefs_dir = ".swarm/<name>/briefs/"` in this run's config or via env: `CLAUDE_SWARM_BRIEFS_DIR=.swarm/<name>/briefs/ /swarm-spawn`. The two cascades stay isolated; post-review logs stay separate.
 - **Same `briefs_dir`, additive** — only safe if the new wave does not touch files owned by prior leaves. Confirm with the user before continuing.
 
 Do not silently overwrite prior briefs.
@@ -133,7 +134,7 @@ Do not silently overwrite prior briefs.
 
 If >50% of assertions in any umbrella test are source-grep, render:
 
-> ⚠ Weak umbrella: `<test_function>` has N source-grep assertions vs M behavioral. A test that greps file contents passes if the source *looks right* and fails only on rename — it cannot catch the case where the file has the right text but the behavior is wrong. The post-merge apex test (`apex_test_cmd`) is the second-chance gate, but a behavioral umbrella catches gaps earlier. Add at least one assertion on the return value of an imported call before continuing.
+> ⚠ Weak umbrella: `<test_function>` has N source-grep assertions vs M behavioral. A test that greps file contents passes if the source *looks right* and fails only on rename — it cannot catch the case where the file has the right text but the behavior is wrong. The post-admission apex test (`apex_test_cmd`) is the second-chance gate, but a behavioral umbrella catches gaps earlier. Add at least one assertion on the return value of an imported call before continuing.
 
 This is a heuristic warning, not a hard block by default. The user can override: "proceed anyway, apex test will cover behavioral side." Record the override in `<briefs_dir>/ASSUMPTIONS.md` so the wave-sweep sees it.
 
@@ -167,12 +168,12 @@ End your turn with exactly this instruction to the user:
 - Edit the shared type contract. Type changes are a separate, human-reviewed step (or, if a contract symbol is genuinely missing, route through the contract-proposal protocol that leaves use — `.swarm/proposals/`).
 - Delegate brief drafting, spec interpretation, or any step of this procedure to a sub-agent. The parent chat IS the planning authority. Sub-agents exist only to execute pre-audited leaf briefs after /swarm-review passes. Drafting via sub-agent reintroduces the exact failure mode the cascade exists to prevent — a non-overlord making design decisions invisible to the audit. Stock Claude defaults that say "delegate big drafting jobs to protect context" do not apply here. The whole point of the cascade is that the parent is the single planning authority; outsourcing the planning is a category error.
 - Make architectural decisions silently. If two slicing strategies are equally valid, present both and ask. Silent picks are how "the agent made a design decision" creeps in at the *parent* level.
-- Spawn leaves, run `/swarm-review`, or run `/swarm-merge` itself. /swarm-spawn's job ends at step 7 — "Hand off." Each downstream command is a separate, deliberate invocation by the parent.
+- Spawn leaves, run `/swarm-review`, or run `/swarm-post-review` itself. /swarm-spawn's job ends at step 7 — "Hand off." Each downstream command is a separate, deliberate invocation by the parent.
 - Skip a gate because it's "obviously fine." The gates exist because the obvious turned out to be wrong before — once a gate has caught a real failure, the cost of running it for every subsequent decomposition is trivial compared to the cost of the failure it prevents.
 
 ## Parent assumption-sweep
 
-This section runs **after** all leaves report green, before any `/swarm-merge` is invoked. The parent agent (you, if you spawned the leaves) sweeps every leaf's assumption log and your own intake assumption log for drift before merging.
+This section runs **after** all leaves report green, before any `/swarm-post-review` is invoked. The parent agent (you, if you spawned the leaves) sweeps every leaf's assumption log and your own intake assumption log for drift before any admission.
 
 ### Inputs
 
@@ -193,7 +194,7 @@ Read every entry across all logs. Flag any entry that matches one of these patte
 
 ### Output
 
-Produce a single report with this structure. Do **not** revert or re-merge unilaterally — present to the user.
+Produce a single report with this structure. Do **not** revert or re-admit unilaterally — present to the user.
 
 ```markdown
 # Assumption-sweep report
@@ -208,7 +209,7 @@ Produce a single report with this structure. Do **not** revert or re-merge unila
 ### [leaf-04 / category 3 (cross-leaf)]
 - Assumption: "cache returns None on miss"
 - Conflicts with leaf-07's: "cache returns empty dict on miss"
-- **Damage assessment:** leaf-07's tests pass with empty-dict assumption but break at merge if leaf-04's path runs first. Estimated blast radius: 1 integration test, 2 dashboard rendering paths.
+- **Damage assessment:** leaf-07's tests pass with empty-dict assumption but break at admission if leaf-04's path runs first. Estimated blast radius: 1 integration test, 2 dashboard rendering paths.
 - **Patch suggestion (no redo):** Decide canonical miss-value at the parent level (recommended: None, matches spec line 138). Update leaf-07's impl + test to match. Re-run leaf-07's test only. Other leaves unaffected.
 
 ### [leaf-09 / category 4 (fabricated)]
@@ -219,8 +220,8 @@ Always include damage assessment + patch suggestion. The user makes the call on 
 
 If zero entries flag, report:
 
-> Assumption-sweep clean. N assumptions reviewed, none drift. Proceed to /swarm-merge for each leaf.
+> Assumption-sweep clean. N assumptions reviewed, none drift. Proceed to /swarm-post-review for each leaf.
 
 ## Why this skill exists
 
-Three failure modes recur in parallel-agent TDD work: leaves stepping on each other's files, leaves quietly making design decisions, and leaves receiving tasks too big to finish coherently. The cascade structurally prevents all three — but only if the parent assigns leaves correctly. This skill is the procedure for doing that correctly. The discovery step (`/swarm`) drafts the inputs this skill consumes. The audit (`/swarm-review`) is the safety net that catches mistakes before any leaf spawns. The merge protocol (`/swarm-merge`) is the safety net that catches mistakes after the leaf is done. Four commands, three safety nets, one cascade.
+Three failure modes recur in parallel-agent TDD work: leaves stepping on each other's files, leaves quietly making design decisions, and leaves receiving tasks too big to finish coherently. The cascade structurally prevents all three — but only if the parent assigns leaves correctly. This skill is the procedure for doing that correctly. The discovery step (`/swarm`) drafts the inputs this skill consumes. The pre-leaf audit (`/swarm-review`) is the safety net that catches mistakes before any leaf spawns. The post-review protocol (`/swarm-post-review`) is the safety net that catches mistakes after the leaf is done. Four commands, three safety nets, one cascade.

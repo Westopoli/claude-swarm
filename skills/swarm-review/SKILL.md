@@ -20,7 +20,7 @@ Before running the check script, lock the scope of this audit so the findings ca
 Ask the user as a single block:
 
 1. **Which briefs directory?** (Default: `briefs_dir` from `.claude-swarm.toml`.)
-2. **Single wave or multi-wave audit?** A *wave* is a sequential batch of parallel leaves; wave N+1 runs after all wave-N leaves merge and may re-edit wave-N-owned files. Multi-wave changes how `non-overlap` is interpreted (waves are sequential — leaf-04 in wave 1 may legitimately own a file leaf-12 in wave 2 also touches).
+2. **Single wave or multi-wave audit?** A *wave* is a sequential batch of parallel leaves; wave N+1 runs after all wave-N leaves are admitted and may re-edit wave-N-owned files. Multi-wave changes how `non-overlap` is interpreted (waves are sequential — leaf-04 in wave 1 may legitimately own a file leaf-12 in wave 2 also touches).
 3. **Were these briefs just emitted by `/swarm-spawn`, or were they hand-edited after a prior FAIL?** Hand-edits without re-running `/swarm-spawn` can re-introduce drift the original procedure caught.
 4. **Anything you already know is borderline?** (E.g., "leaf-09 is intentionally on the edge of the sizing budget — flag if you must but it's an explicit choice.") Borderline cases the user has already signed off on can be Advisory rather than blocking.
 
@@ -56,7 +56,7 @@ After the script runs, for every brief:
 
 > **FAIL: codebase-preconditions** — leaf-NN, precondition `<name>`: `verify` command exited <N>. Brief asserts a codebase state that does not hold. Either correct the brief or address the missing precondition before spawning the leaf.
 
-- **Heuristic warning when no preconditions declared.** If a brief's task prose contains claim-words ("already", "in place", "exists as of", "previously added", "we have", "was merged in wave") without any `codebase_preconditions:` entry, emit an **Advisory**:
+- **Heuristic warning when no preconditions declared.** If a brief's task prose contains claim-words ("already", "in place", "exists as of", "previously added", "we have", "was admitted in wave") without any `codebase_preconditions:` entry, emit an **Advisory**:
 
 > **Advisory** (not blocking): leaf-NN task prose contains claim-word `<word>` but declares no `codebase_preconditions`. The brief asserts a codebase fact the audit cannot verify. Add a `verify:` command to make the assertion auditable.
 
@@ -84,7 +84,7 @@ End the turn with one of:
 When the FAIL is caused by **non-overlap** (two briefs claim the same impl file), always append the resolution options so the parent has a clear path forward:
 
 > **Resolution options for overlap on `<file>`:**
-> - **(a) Sequential waves** — keep both leaves but assign them different wave numbers. Wave-1 leaf owns the file; wave-2 leaf inherits it after wave-1 merges. Parallelism is reduced but the cascade stays intact.
+> - **(a) Sequential waves** — keep both leaves but assign them different wave numbers. Wave-1 leaf owns the file; wave-2 leaf inherits it after wave-1 is admitted. Parallelism is reduced but the cascade stays intact.
 > - **(b) Prep-step split** — before re-emitting briefs, the parent commits a refactor that splits `<file>` into sub-files (one per leaf's scope). Each leaf then owns a distinct file. Parallelism is preserved. See "Prep steps" in `~/.claude/skills/swarm-shared/references/playbook.md` for the umbrella-before/after requirement.
 >
 > Do not choose between these — present both to the user. The seam-axis decision (how to split, or whether to serialize) belongs to the parent + human, not to this skill.
@@ -93,7 +93,7 @@ When the FAIL is caused by **non-overlap** (two briefs claim the same impl file)
 
 | Invariant | Failure mode it prevents | Where it shows up in a brief |
 |---|---|---|
-| **non-overlap** | Two leaves stepping on each other's files; race conditions on merge. | Same `impl_file` or `test_file` in two briefs; brief touching a `parent_owned` glob; `do_not_edit` missing a sibling's owned file. |
+| **non-overlap** | Two leaves stepping on each other's files; race conditions on admission. | Same `impl_file` or `test_file` in two briefs; brief touching a `parent_owned` glob; `do_not_edit` missing a sibling's owned file. |
 | **no-design** | Leaf inventing types, choosing API shape, resolving spec ambiguity. | `spec_lines` non-concrete; `contract_imports` referencing symbols not in the locked contract; ambiguous verbs in task prose. |
 | **sizing** | Leaf gets a slice too large to finish in one pass, midway it starts making decisions to bridge gaps. | `impl_line_budget` or `test_assertion_budget` over the project max. |
 

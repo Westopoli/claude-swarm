@@ -11,7 +11,7 @@ $ErrorActionPreference = "Stop"
 
 $REPO_URL = "https://github.com/Westopoli/claude-swarm"
 $SKILLS_DIR = Join-Path $env:USERPROFILE ".claude\skills"
-$SKILLS = @("swarm", "swarm-spawn", "swarm-review", "swarm-merge", "swarm-shared")
+$SKILLS = @("swarm", "swarm-spawn", "swarm-review", "swarm-post-review", "swarm-shared")
 
 Write-Host "claude-swarm -- installing to $SKILLS_DIR"
 New-Item -ItemType Directory -Force -Path $SKILLS_DIR | Out-Null
@@ -53,4 +53,4 @@ Write-Host "Done. Restart Claude Code, then try:"
 Write-Host "  /swarm"
 Write-Host "  /swarm-spawn"
 Write-Host "  /swarm-review"
-Write-Host "  /swarm-merge"
+Write-Host "  /swarm-post-review"
