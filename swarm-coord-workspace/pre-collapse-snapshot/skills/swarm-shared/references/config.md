@@ -1,6 +1,6 @@
 # claude-swarm config
 
-Each project that uses the cascade places a `.claude-swarm.toml` at its project root. `/swarm` reads it at Phase 0 preflight. Missing file is fine — defaults apply.
+Each project that uses the cascade skills places a `.claude-swarm.toml` at its project root. All three skills (`swarm`, `swarm-review`, `swarm-post-review`) read it. Missing file is fine — defaults apply.
 
 ## Schema
 
@@ -17,7 +17,7 @@ type_contract_path = "src/<pkg>/types.py"
 # Test + dependency-map commands. The skill shells out exactly as written.
 
 umbrella_test_cmd = "pytest tests/umbrella.py"
-# Optional: behavioral integration test run by /swarm Phase 7.1 after all leaves admit.
+# Optional: behavioral integration test run by /swarm-post-review at queue completion.
 # Distinct from umbrella_test_cmd (which is per-leaf-isolation). Catches the
 # failure mode where every leaf's umbrella was a source-grep pattern but the
 # integrated behavior is still broken.
@@ -45,7 +45,7 @@ max_impl_lines        = 200
 max_test_assertions   = 20
 
 # Words that, if found in a brief's task prose, indicate a design decision
-# is being delegated to the leaf. /swarm Phase 3 fails the brief.
+# is being delegated to the leaf. /swarm-review fails the brief.
 ambiguous_verbs = [
   "decide", "choose", "design", "determine",
   "figure out", "resolve", "as appropriate",
@@ -53,7 +53,7 @@ ambiguous_verbs = [
 ]
 
 [gates]
-# Optional project-specific gates run by /swarm Phase 1.A after the spec draft is approved.
+# Optional project-specific gates run before /swarm-spawn continues past spec-gate.
 # Each entry is a shell command. Non-zero exit blocks. Empty list = no extra gates.
 # $SPEC_FILE is exported by the skill before each command.
 extra_spec_gate_cmds = []
@@ -73,7 +73,7 @@ If `.claude-swarm.toml` is missing, the skill uses every default above. `type_co
 1. `.claude-swarm.toml` at project root.
 2. Built-in defaults.
 
-Environment variables can override individual keys for one-off runs: `CLAUDE_SWARM_SPEC_DIR=alt-specs/ /swarm`.
+Environment variables can override individual keys for one-off runs: `CLAUDE_SWARM_SPEC_DIR=alt-specs/ /swarm-spawn`.
 
 ## Why a config file rather than CLI flags
 

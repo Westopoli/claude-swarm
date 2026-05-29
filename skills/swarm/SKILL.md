@@ -1,261 +1,492 @@
 ---
 name: swarm
-description: First command in the TDD parallel-agent cascade. Discovery step — takes the user from zero (or partial documentation) to a locked spec, a minimal type contract, and a failing umbrella test that pins the cascade's "done" definition. Use whenever the user wants to start a new task, feature, or project and has no spec / no type contract / no umbrella test yet, or has only partial documentation. Triggers on phrases like "I want to build", "let's plan this out", "start a new task", "begin a new feature", "kick off the cascade from scratch", "I have nothing yet, help me plan", "set up the planning for X". This skill writes design artifacts only — spec, type contract, and one behavioral umbrella test. It does NOT write impl code. It does NOT decompose the spec into leaves (that is `/swarm-spawn`, the next step). Every architecture / design decision must be surfaced for explicit user approval or flagged in `.UNSTATED.md` for later resolution — no silent picks.
+description: Single-command parallel-agent TDD cascade. Use when the user wants to build a feature with parallel sub-agents — phrases like "swarm this", "decompose and spawn", "run the cascade", "spawn N agents on this", "build feature X with parallel agents", "set up the wave", "let's parallelize this". Walks through all phases internally (preflight → lite-discovery → decompose → audit → spawn → wait + sweep → admission loop → final report) — no sibling slash commands to chain. Overlord chat writes spec/contract/umbrella (lite drafts if missing) AND per-leaf failing tests; leaves only write impl. File-based, no git. Hard-refuses when decomposition exceeds ~16 leaves; warns >12. Always invoke this when the user wants parallel sub-agent work — not separate commands for spawn / review / post-review (they no longer exist).
 ---
 
-# /swarm — discovery step of the TDD cascade
+# /swarm — single-command parallel-agent cascade
 
-This skill is the **first** command in the cascade. It is the entry point for users who are starting a task with no prior documentation (or only partial documentation). The output of this skill is three artifacts on disk — a spec file, a type contract file, and a failing umbrella test — each user-approved at an explicit gate, plus an `.UNSTATED.md` companion log for everything the skill inferred that the user did not directly state.
+One slash command. The overlord (this chat) drives every phase. Sub-agents only write impl against pre-written failing tests.
 
-The companion theory lives at `~/.claude/skills/swarm-shared/references/playbook.md`. The downstream decomposition step is `/swarm-spawn`. The pre-leaf audit step is `/swarm-review`. The post-leaf admission step is `/swarm-post-review`.
+The cascade prevents three structural failures in parallel-agent TDD: (1) leaves stepping on each other's files, (2) leaves silently making design decisions, (3) leaves receiving slices too big to finish coherently. Phases 0–7 are the procedure for keeping those guarantees while collapsing the prior 4-command UX into one.
 
-## Where /swarm fits
+Theory: `~/.claude/skills/swarm-shared/references/playbook.md`. Brief template: `~/.claude/skills/swarm-shared/references/brief-template.md`. Config schema: `~/.claude/skills/swarm-shared/references/config.md`.
 
-**/swarm is the FIRST command in the cascade.** It is optional only in the sense that a user who already has a spec, contract, and umbrella in place may skip directly to `/swarm-spawn`. Cascade order:
+---
+
+## Phases at a glance
 
 ```
-/swarm          → discovery: drafts spec + type contract + umbrella test (RED).
-                  User confirms each artifact at an explicit gate.
-                  Hands off to /swarm-spawn.
-/swarm-spawn    → decomposition: slices spec into one leaf brief per sub-agent.
-                  Hands off to /swarm-review.
-/swarm-review   → audits briefs against invariants. Reports PASS/FAIL per brief.
-[spawn leaves]  → one sub-agent per brief, in parallel.
-/swarm-post-review → runs once per leaf after the leaf reports green. Gated admission.
+Phase 0  Preflight              — find/bootstrap .claude-swarm.toml; list which of {spec, contract, umbrella} exist
+Phase 1  Lite-discovery         — fire only for missing inputs; one-question drafts, Bible Compliance footer on spec
+Phase 2  Decompose              — emit briefs + write per-leaf failing tests (Spec Link Rule + task-size guardrail)
+Phase 3  Audit briefs           — run check_invariants.py + codebase-preconditions; fix & re-run on FAIL
+Phase 4  Spawn leaves           — N sub-agents in parallel via Task() in one message
+Phase 5  Wait + sweep           — wait all green; aggregate assumption-sweep; write .swarm/wave-N.SWEEP.md
+Phase 6  Admission loop         — per leaf: G1–G7 + file-match + umbrella pre/post + admit-or-revert + log
+Phase 7  Final report           — counts + follow-up direction
 ```
 
-**Inputs to /swarm:** nothing required. The user invokes /swarm at the start of a task. The skill's step-0 intake asks the user what they want to build and whether any prior documentation exists.
+If all three inputs (spec, contract, umbrella RED) already exist on disk, Phase 1 is skipped entirely. That is the common path for a returning project.
 
-**Output of /swarm:**
+---
 
-- a **spec file** at `<spec_dir>/<name>.md` — every line either cites a user statement (`[source: user-stmt-N]`) or is flagged in `<spec_dir>/<name>.UNSTATED.md`.
-- a **type contract file** at `<type_contract_path>` — minimal symbols only; each symbol either cites a spec line or lands in `.UNSTATED.md`.
-- an **umbrella test** at the path that `umbrella_test_cmd` runs — behavioral assertions only (no source-grep), imports from the type contract, confirmed RED.
-- an **unstated-assumptions log** at `<spec_dir>/<name>.UNSTATED.md` — every value the skill picked that the user did not directly state, with a user-supplied disposition (confirm / edit / accept-as-flagged).
+## Phase 0 — Preflight
 
-**Hand-off**: /swarm does NOT invoke /swarm-spawn. The user (or the parent chat, in a deliberate later turn) invokes /swarm-spawn next.
+**0.1 Locate config.** Walk up from cwd until a `.claude-swarm.toml` is found. If none: copy `~/.claude/skills/swarm-shared/templates/.claude-swarm.toml.example` to `<project_root>/.claude-swarm.toml`, then ask the user to fill each required field — do not guess values, wrong values here propagate everywhere:
 
-## Design principle: autonomy classes
+- `spec_dir` — directory for the spec file (often `specs/`).
+- `briefs_dir` — leaf briefs go here (default `.swarm/briefs/`).
+- `type_contract_path` — contract file (often `src/<pkg>/types.py`).
+- `umbrella_test_cmd` — command that runs the umbrella (e.g., `pytest tests/umbrella.py`).
+- `parent_owned` — globs leaves cannot touch.
 
-The skill's job is to make design choices visible. Every decision the skill takes falls into one of these classes:
+**0.2 Read inputs.** List which of these three exist on disk:
 
-| Decision class | Autonomy | Why |
-|---|---|---|
-| Mechanical drafting (rendering a file once content is user-approved) | Full | Content was approved upstream; rendering is deterministic. |
-| Phrasing / wording inside an artifact | Full (user can edit) | Mechanical; user owns the next-edit pass. |
-| **Architecture / design choices** (data shapes, behaviors, defaults, error semantics, naming that implies semantics) | **None** | Each surfaces for explicit user approval or lands in `.UNSTATED.md`. This is the failure mode the entire cascade exists to prevent — silent agents picking design. |
-| Artifact location (where the spec / contract / umbrella files live) | Read from `.claude-swarm.toml` if set; ask once if missing | Mechanical with one-shot fallback. |
+- Spec at `<spec_dir>/<name>.md` (ask the user for `<name>` if ambiguous; do not silently pick).
+- Type contract at `<type_contract_path>`.
+- Umbrella test at the path `umbrella_test_cmd` would discover.
 
-If you find yourself about to pick a value that affects how the system behaves (a default, an error case, a data shape, a naming choice that carries meaning), stop and either ask the user or write it to `.UNSTATED.md`. The whole skill is the procedure for keeping circular grounding safe — and that only works if every design pick is either user-approved or flagged.
+**0.3 Existing-wave guard.** If `<briefs_dir>` already contains `leaf-*.md` from a prior cascade, stop and ask the user how to scope this run:
 
-## Invocation mode — interactive vs non-interactive
+- Different `briefs_dir` per cascade (recommended) — set `briefs_dir = ".swarm/<name>/briefs/"` for this run.
+- Same `briefs_dir`, additive — only safe if the new wave does not touch files prior leaves owned. Confirm before continuing.
 
-Before step 0, determine which invocation mode applies. This decides what to do when a gate has no human answer available.
+Do not silently overwrite prior briefs.
 
-- **Interactive** — there is a real human on the other end of this chat turn. The user can reply to questions. This is the default when invoked directly by a user in a fresh chat.
-- **Non-interactive** — invoked as a sub-agent task, a CI step, an automated trigger, or in any context where no human-in-the-loop turn signal exists (e.g., the prompt arrived as a single dispatched task with all expected user answers pre-scripted, or no answer channel exists). If a scripted-responses file is present (e.g., `USER_RESPONSES.md` in the working directory), this skill is non-interactive — the script is the canonical user transcript; look up the matching response per gate.
+**0.4 Existing-cascade summary.** Print one line: which of {spec, contract, umbrella} exist, briefs_dir state, project root path. Lock the scope.
 
-**Declare the mode at the top of your run.** If unsure, treat as non-interactive — silent picks under the assumption of interactivity are worse than over-flagging.
+---
 
-**Non-interactive fallback rule (applies to every gate in the procedure below):** if a gate question has no answer (no script entry, or the script returns `STOP_AND_LOG`), do NOT hang. Record the unresolved question as an entry in `<spec_dir>/<name>.UNSTATED.md` with Disposition `flagged-for-spawn`, then continue. The downstream sweep (`/swarm-spawn` audit) picks up flagged-for-spawn entries. The full theory is at `~/.claude/skills/swarm-shared/references/playbook.md` (section: "Interactive vs non-interactive invocation").
+## Phase 1 — Lite-discovery (conditional, per missing input)
 
-## 0. Intake — ASK BEFORE PROCEDURE
+Fires only for inputs missing from Phase 0. **No 11-step ceremony, no `.UNSTATED.md`, no `[source: user-stmt-N]` citation discipline.** Each missing input gets one short turn.
 
-Ask the user as a single block:
+### 1.A Spec missing
 
-1. **What do you want to build?** (one or two paragraphs from the user, in their own words. Open-ended.)
-2. **Do you already have any documentation about this task** — notes, design docs, a half-written spec, a paragraph from another chat, anything?
-   - **Yes** → user pastes or cites the docs. The skill treats those as the initial pool of user statements (each one tagged `[source: user-doc-N]`), but **still** runs the restate-and-confirm loop on extracted content — extracting from docs is its own inference step.
-   - **No** → the skill starts clean. The interview is open-ended.
+Ask in one block:
 
-Restate the answers to both questions in two sentences and **wait for confirmation** before continuing to step 1.
+1. **What do you want to build?** (one or two paragraphs, user's own words)
+2. **What's the source-of-truth design doc (bible) for this project, if any?** Path or "none" is acceptable.
 
-## Procedure
-
-Run these steps in order. Stop at the first user disapproval and revise before continuing.
-
-### 1. Locate config
-
-- Find project root: walk up from the current working directory until a `.claude-swarm.toml` file or a directory that looks like a project root is found.
-- Read `<project_root>/.claude-swarm.toml`. If missing, copy `~/.claude/skills/swarm-shared/templates/.claude-swarm.toml.example` to `<project_root>/.claude-swarm.toml`, then walk the user through filling each required field. The bootstrap is not complete after the copy — every field below needs a user-supplied value, not a placeholder:
-  - `spec_dir` — directory where the spec file will live (often `specs/`).
-  - `briefs_dir` — where `/swarm-spawn`'s leaf briefs will go (default `.swarm/briefs/`).
-  - `type_contract_path` — file the contract will be written to (often `src/<pkg>/types.py`).
-  - `umbrella_test_cmd` — command that will run the umbrella test you are about to draft (e.g., `pytest tests/umbrella.py`).
-  - `parent_owned` — globs for files only the parent can edit downstream.
-
-Do not guess any value. If the user cannot answer a field, stop. Wrong values picked here propagate into every downstream skill.
-
-### 2. Restate-and-confirm loop (gate: `intent-confirmed`)
-
-Paraphrase the user's intent back in your own words, in 2–4 sentences. Ask the user to either:
-
-- **Approve** ("yes, that's it") — proceed to step 3.
-- **Correct** ("close, but ...") — incorporate the correction, paraphrase again. Loop.
-
-Do not advance to step 3 until the user explicitly approves. Silent advance is the same failure mode the cascade exists to prevent, expressed at the discovery layer.
-
-### 3. Architecture intake (record user statements)
-
-Ask the user a focused set of questions about the architecture. Tailor the list to the kind of system they are building, but cover at minimum:
-
-1. **What are the key inputs?** (data shapes, types, sources)
-2. **What are the key outputs?** (data shapes, types, sinks)
-3. **What are the main behaviors / transformations?** (one sentence each — these become acceptance criteria)
-4. **What are the explicit constraints?** (performance, language/library choices, conventions to follow)
-5. **What is explicitly out of scope?** (so you do not draft a spec line for it)
-6. **What does "done" look like for the umbrella test?** (one sentence describing the user-visible behavior the umbrella will assert on)
-
-Store every answer **verbatim** in your working memory, each labeled with a stable id (`[user-stmt-1]`, `[user-stmt-2]`, …). These labels become the citations every spec line and contract symbol uses. Do not paraphrase the user's words at this stage — paraphrasing is itself a design decision and belongs to a later, gated step.
-
-### 4. Draft the spec (gate: `spec-traceable`)
-
-Write `<spec_dir>/<name>.md`. Choose `<name>` from the user's restated intent in step 2 (mechanical — derive from the noun phrase the user used; ask if ambiguous).
-
-**Spec format:**
+Draft `<spec_dir>/<name>.md`:
 
 ```markdown
 # <name>
 
 ## Summary
-<one paragraph paraphrasing user-stmt-1 (intent). Cite source.>
+<one-paragraph paraphrase>
 
 ## Acceptance criteria
-1. <criterion> [source: user-stmt-N]
-2. <criterion> [source: user-stmt-N]
+1. <criterion>
+2. <criterion>
 ...
 
-## Inputs
-<bullets, each with source citation>
+## Inputs / Outputs / Constraints / Out of scope
+<bullets>
 
-## Outputs
-<bullets, each with source citation>
-
-## Constraints
-<bullets, each with source citation>
-
-## Out of scope
-<bullets, each with source citation>
+## Bible Compliance
+- **Bible path:** `<path>` (or "none — this project has no source-of-truth doc")
+- **Sections referenced:** <section names / line refs the spec implements>
+- **Deliberate divergences:** <list any spec line that intentionally diverges from the bible, with the reason. If none: "none.">
 ```
 
-**Trace-or-flag discipline:** every spec line either ends with `[source: user-stmt-N]` (or `[source: user-doc-N]` for content extracted from prior docs), or it does not appear in the spec — instead it appears in `<spec_dir>/<name>.UNSTATED.md` as a flagged inference (see step 10).
+Render the draft to the user. They approve, edit, or restart. Bible Compliance is the one piece of discovery rigor kept from the legacy `/swarm` — the source-of-truth strategy doc cites a real cost from omitting it (a wave shipped four Python stages when the bible specified Postgres; cost an afternoon + 15 leaf agents to re-do). Skipping the footer is acceptable when the project genuinely has no bible; lying that there is none is the failure mode.
 
-Before writing the file, re-read your draft. If any line lacks a citation, move it to the `.UNSTATED.md` queue. Do not write uncited content into the spec.
+If `extra_spec_gate_cmds` is set in `.claude-swarm.toml`, run each command with `$SPEC_FILE` exported. Any non-zero exit blocks Phase 1 — fix and re-run.
 
-### 5. Spec review gate (`spec-approved`)
+### 1.B Type contract missing
 
-Render the drafted spec to the user. Ask:
+Derive the minimum symbols needed to encode the spec's inputs, outputs, and main behaviors. Write `<type_contract_path>` with sentinel bodies (`raise NotImplementedError`, `return None`). Each symbol comment-cites the spec line it encodes.
 
-- **Approve** the spec as-is → proceed.
-- **Edit** (user describes a change) → apply the edit; if the edit introduces content not traceable to a user statement, log it as a new user-stmt and re-render. Re-ask.
-- **Restart** (the spec is fundamentally off) → return to step 2.
+Render to user → approve/edit/restart. Spec is locked at this point — a restart returns to drafting the contract, not the spec.
 
-Do not proceed to step 6 without an explicit "approve."
+### 1.C Umbrella test missing
 
-### 6. Draft the type contract (gate: `contract-minimal`)
+Draft a single behavioral test at the path `umbrella_test_cmd` discovers. The test imports from the contract, asserts on return values or observable side effects (never `open(path).read()` — that is source-grep, not behavior), and is expected to fail because the contract bodies are sentinels.
 
-Write the file at `<type_contract_path>`. Include the **minimum** set of symbols needed to encode the spec's inputs, outputs, and main behaviors as type signatures. For each symbol:
+Run `umbrella_test_cmd`. Confirm exit code is non-zero (RED). If GREEN: the test does not exercise the contract — revise.
 
-- give it a name + signature that the umbrella test (step 8) will import.
-- cite the spec line(s) the symbol encodes, e.g., `# encodes spec.md line 14 (input shape)`.
-- include a body that is the smallest implementation that lets the umbrella import the symbol without error. Sentinel return values (`raise NotImplementedError`, `return None`, `return SENTINEL`) are correct here — actual behavior lives in leaf impls downstream.
+Render to user → approve/edit/restart.
 
-**Trace-or-flag discipline:** every symbol either cites a spec line, or it does not appear in the contract — instead it appears in `.UNSTATED.md` as a flagged inference.
+### Lite-discovery is one approval-turn per artifact, not three
 
-**Minimality discipline:** if you are about to add a symbol the spec does not directly imply (helper types, internal protocols, utility constants), do not. Either ask the user, or flag it in `.UNSTATED.md` and proceed without it. Over-broad contracts are the discovery-layer equivalent of design leak.
+If the user is engaged and answers quickly, all three drafts can land in one conversation. The point of "lite" is no `.UNSTATED.md`, no architecture intake, no restate-and-confirm loop, no self-scan production. The user is sitting right there — speak with them.
 
-### 7. Contract review gate (`contract-approved`)
+---
 
-Render the drafted contract to the user. Ask the same three-way choice as step 5 (approve / edit / restart). Restarting the contract returns to step 6, not step 2 — the spec is already locked.
+## Phase 2 — Decompose
 
-### 8. Draft the umbrella test (gates: `umbrella-red`, `umbrella-behavioral`)
+Read the locked spec + contract. Produce one leaf brief per slice at `<briefs_dir>/leaf-NN.md`. **Overlord responsibility:** also write each leaf's failing test file at the path declared in the brief's `test_files`. Leaves only write impl against pre-written failing tests.
 
-Write a single behavioral test at the path that `umbrella_test_cmd` will discover. The test:
+### 2.1 Dependency map
 
-- imports from the type contract (no symbols outside the contract).
-- asserts on **return values** or **observable side effects** of contract symbols — never on source-file contents (no `open(path).read()` assertions).
-- encodes at least one acceptance criterion from the spec. Cite which one in a comment.
-- is **expected to fail** when run — because the contract has sentinel bodies.
+If `graphify_cmd` is set, run it. Otherwise do a manual import-graph scan of the impl files you intend to assign. Identify slices such that no two slices touch the same impl file (within the same wave).
 
-Run `umbrella_test_cmd` to confirm:
+### 2.2 Task-size guardrail
 
-- exit code is non-zero (RED) — if it passes, abort with: "Umbrella is green before any leaf. The test does not actually exercise the contract; revise to assert on contract behavior, not on imports or signatures."
-- of the assertions present, ≥50% are behavioral (not source-grep). If <50%, render the weak-umbrella warning from `swarm-shared/references/playbook.md` and require the user to confirm proceeding.
+Count planned leaves:
 
-### 9. Umbrella review gate (`umbrella-approved`)
+- **≤ 12:** proceed.
+- **13–16:** print warning, ask the user to confirm. Past ~12, observed failure rate climbs — siblings drift, parent context fills, post-review log gets noisy. Confirm or re-scope.
+- **> 16:** **refuse**. Do not write the briefs. Tell the user either to re-scope the spec into a smaller wave, or to break into multiple sequential waves (wave 1 owns files A–F, wave 2 picks up files G–L after wave 1 admits cleanly).
 
-Render the umbrella test to the user. Same three-way choice (approve / edit / restart). Restart returns to step 8 — the spec and contract are locked.
+### 2.3 Fat-file check (only if some impl files exist)
 
-### 10. Self-scan production (gate: `unstated-resolved`)
+For each impl file the spec implies will be touched: if the file already exists and spans multiple ACs the spec decomposes into separate leaves, render the fat-file warning and ask the user to choose:
 
-This is the load-bearing step that makes circular grounding safe. Without it, the skill could quietly invent values throughout steps 4–8 and never surface them.
+- **(a) Sequential waves** — assign AC-X to wave 1, AC-Y to wave 2. Same file, one owner at a time.
+- **(b) Prep-step split** — overlord commits a refactor that splits the file into sub-files before decomposition. See `swarm-shared/references/playbook.md` "Prep steps".
 
-Re-read every artifact produced (spec, contract, umbrella test). For each line, ask: *does this trace back to an explicit user statement from step 3 (or to a prior user-doc citation)?* List every value, default, naming choice, behavior, or invariant for which the answer is **no**.
+Do not pick silently. The seam-axis decision belongs to the user.
 
-Categories to look for:
+### 2.4 Emit briefs
 
-- **Defaults**: any default value (timeouts, sizes, retry counts, fallback behaviors) the user did not state.
-- **Naming with semantics**: a field or function name that implies a behavior the user did not describe (e.g., `cache_ttl_seconds` when the user said "cache it").
-- **Error semantics**: what happens on invalid input, missing field, network failure — anything the user did not specify.
-- **Data-shape choices**: dict vs object, list vs set, JSON dialect, encoding — when the user did not specify.
-- **Behavior-on-edge**: what the system does at boundaries the user did not call out.
+For each slice, write `<briefs_dir>/leaf-NN.md` following `~/.claude/skills/swarm-shared/references/brief-template.md`. Set `test_owned_by: parent` in every brief frontmatter (the overlord owns the test files now).
 
-Write `<spec_dir>/<name>.UNSTATED.md`:
+Key brief rules:
+- `spec_lines`: concrete `int-int` range.
+- `contract_imports`: only symbols present in the locked contract.
+- `do_not_edit`: every other same-wave brief's `impl_files` + parent-owned globs.
+- Task prose: imperative, no ambiguous verbs (decide / choose / design / determine / figure out / resolve / pick).
+- `impl_line_budget`, `test_assertion_budget`: from `.claude-swarm.toml`; tighten if you can.
+
+The brief's `## Task` section must instruct the leaf:
+
+> Test files at `<test_files paths>` are already written and failing. Your job: write impl at `<impl_files paths>` that makes them pass. Stage outputs at `.swarm/pending/leaf-NN/` mirroring destination paths from the project root. Do not modify the test files. Do not create any files outside `impl_files`.
+
+### 2.5 Write per-leaf failing tests
+
+For each brief, write its `test_files` path(s) with a failing test that exercises only that leaf's contract symbols.
+
+**Spec Link Rule** — every test file MUST begin with a header comment of this exact shape:
+
+```
+# spec: <spec_path>::<section>::AC-<N>
+```
+
+Example: `# spec: specs/cache.md::Acceptance criteria::AC-3`.
+
+This header is the leaf's traceability anchor. Phase 3's invariant check greps for it; missing or malformed header → audit FAIL.
+
+After writing each test, run it once to confirm RED. If GREEN: the test does not actually exercise the slice — revise. Do not advance to Phase 3 with a green test in a brief footprint.
+
+---
+
+## Phase 3 — Audit briefs
+
+Run the deterministic invariant check:
+
+```bash
+python ~/.claude/skills/swarm-shared/scripts/check_invariants.py
+```
+
+Optional flags: `--briefs-dir <path>`, `--root <path>`.
+
+The script reads `.claude-swarm.toml`, parses every `leaf-*.md` in `briefs_dir`, and validates:
+
+- **non-overlap** — no two same-wave briefs name the same file; no brief touches parent-owned globs.
+- **no-design** — `spec_lines` concrete; `contract_imports` resolve in the locked contract; no ambiguous verbs in task prose.
+- **sizing** — `impl_line_budget` ≤ `max_impl_lines`; `test_assertion_budget` ≤ `max_test_assertions`.
+- **spec-link** — every brief-declared test file path starts with `# spec: ...::AC-N` header.
+
+Exit 0 = all pass, exit 1 = findings, exit 2 = config error.
+
+### 3.1 Codebase-preconditions verification
+
+For every brief with `codebase_preconditions:` frontmatter entries, run each `verify:` shell command from project root. Any non-zero exit → **FAIL: codebase-preconditions** for that brief.
+
+For briefs without `codebase_preconditions:` whose task prose contains claim-words ("already", "in place", "exists as of", "previously added", "we have", "was admitted in wave"): emit an **Advisory** (non-blocking) recommending the parent add a `verify:` command.
+
+### 3.2 Render verbatim
+
+Show the script output to yourself (the overlord) and to the user. Do not paraphrase. The leaf_id + invariant + reason all matter for fixing the brief.
+
+### 3.3 On FAIL
+
+For each failing brief: read it, identify the offending line, fix the brief inline (or re-run Phase 2 if the failure is structural — wrong slicing, fat-file collision the dependency map missed). Then re-run the audit. Do not advance to Phase 4 with any FAIL outstanding.
+
+If FAIL is on **non-overlap**, surface both resolution paths (sequential waves vs prep-step split) — these are seam-axis decisions, present them to the user.
+
+---
+
+## Phase 4 — Spawn leaves
+
+After Phase 3 reports `all PASS`, spawn one sub-agent per brief **in parallel** — a single message with N `Task()` tool calls, not N sequential turns.
+
+### 4.1 Per-leaf prompt shape
+
+Each `Task()` call gets a self-contained prompt:
+
+```
+You are leaf-NN of a TDD cascade. Read your brief at <briefs_dir>/leaf-NN.md
+in full before doing anything.
+
+Your test file(s) are already written at <test_files paths> and are failing.
+Your job: write impl at <impl_files paths> that makes them pass.
+
+Stage your output at .swarm/pending/leaf-NN/ mirroring the destination paths
+from the project root (e.g. src/cache.py → .swarm/pending/leaf-NN/src/cache.py).
+
+Do NOT modify test files. Do NOT create files outside impl_files. Do NOT
+edit any file in do_not_edit. Do NOT make design decisions — if anything
+is ambiguous, write a question to .swarm/questions/leaf-NN-Q<n>.md and
+proceed under best-guess (record the guess in leaf-NN.ASSUMPTIONS.md with
+unanswered: true).
+
+When your test(s) go green in isolation, report back: "leaf-NN green" plus
+a summary of what you staged.
+```
+
+### 4.2 Subagent type selection
+
+If a `caveman:cavecrew-builder` agent is available and the leaf scope is bounded (≤ 2 impl files, no new files unless brief explicitly declares them), prefer it — its surgical-edit posture matches the leaf brief's footprint discipline. Otherwise use `general-purpose`.
+
+This is a hint, not a hard rule. The brief's footprint discipline is the actual safety net; the choice of sub-agent type is performance optimization.
+
+### 4.3 Wait for all leaves to report
+
+Do not advance to Phase 5 until every spawned leaf has reported green-in-isolation. A leaf that reports red after multiple attempts → escalate to user (the leaf may need a re-spawn with corrected brief, or the brief itself was wrong).
+
+---
+
+## Phase 5 — Wait + aggregate sweep
+
+All leaves reported green. Before any admission:
+
+### 5.1 Wave-snapshot init
+
+Compute SHA-256 of every file in the repo that is NOT declared in any wave-N brief's `test_files` + `impl_files`. Write to `.swarm/wave-<wave>.snapshot.json`:
+
+```json
+{
+  "wave": <wave>,
+  "created_at": "<ISO timestamp>",
+  "leaf_owned_paths": ["src/cache.py", "tests/test_cache.py", ...],
+  "hashes": {"<path>": "<sha256>", ...}
+}
+```
+
+Skip files matching `.git/**`, `.swarm/**`, `__pycache__/**`, `node_modules/**`, `.venv/**` (plus any `snapshot_ignore` entries in `.claude-swarm.toml`).
+
+### 5.2 Aggregate assumption-sweep
+
+Read every `<briefs_dir>/leaf-NN.ASSUMPTIONS.md`. Categorize entries:
+
+1. **Contradicts the spec.** Assumption picks a value the spec explicitly contradicts.
+2. **Contradicts the bible.** Assumption picks a value the source-of-truth doc forbids.
+3. **Cross-leaf contradiction.** Two leaves made incompatible assumptions about the same shared interface.
+4. **Fabricated symbol or path.** References a type/function/file that does not exist in the contract or repo.
+5. **Compounded inference.** A leaf assumption is justified by another assumption rather than by a spec line or contract symbol.
+
+Write `.swarm/wave-<wave>.SWEEP.md`:
 
 ```markdown
-# Unstated assumptions for <name>
+# Wave <wave> assumption-sweep
 
-## Entries
+## Summary
+- Total assumptions logged: N
+- Flagged: M (by category)
 
-### U-1: <short label>
-- Artifact: <spec | contract | umbrella>
-- Location: <line ref or symbol name>
-- Inferred value: <what the skill picked>
-- Why this could not be cited: <e.g., "user did not state a default for X">
-- Disposition: <pending — to be set by user>
+## Flagged entries
 
-### U-2: ...
+### [leaf-NN / category K]
+- Assumption: "<quote>"
+- Conflicts with: <other entry / spec line / bible section>
+- Damage assessment: <blast radius>
+- Patch suggestion: <minimal fix, no redo>
 ```
 
-For each entry, present it to the user with the three-way choice:
+Present flagged entries to the user. Default bias: patch, do not redo — redo costs an afternoon, patch usually costs minutes. User decides per entry.
 
-- **Confirm** — accept the inferred value; update Disposition to `confirmed`. The entry stays in `.UNSTATED.md` as a record but is no longer "open."
-- **Edit** — user provides a different value. Update the relevant artifact (spec / contract / umbrella) to match, re-cite as `[source: user-stmt-N]` (the user's edit is itself a user statement), update Disposition to `edited`.
-- **Accept-as-flagged** — leave the inference in place but mark it as a known assumption for `/swarm-spawn`'s downstream sweep to pick up. Update Disposition to `flagged-for-spawn`.
+If zero entries flag, write the file anyway with a single line: `Assumption-sweep clean. N assumptions reviewed, none drift.` G7 in Phase 6 requires the file to exist and to be newer than every leaf ASSUMPTIONS.
 
-Do not hand off until **every** entry has a non-`pending` disposition. An unresolved entry is the exact failure mode the cascade exists to prevent: a silent design pick masquerading as a confirmed choice.
+### 5.3 Open-question + proposal triage
 
-If `.UNSTATED.md` would have **zero** entries, render it anyway with a single line: `No unstated assumptions detected.` This forces the explicit scan and confirms it ran.
+- List `.swarm/questions/leaf-NN-Q*.md`. For each, ensure either an answer at `.swarm/answers/leaf-NN-Q<n>.md` exists OR the leaf's ASSUMPTIONS file tags it `unanswered: true`. If neither, the leaf made a silent decision — escalate to user for an answer before Phase 6.
+- List `.swarm/proposals/leaf-NN.md`. Resolve every `status: pending` proposal (parent applies + marks `accepted`, OR `rejected` / `superseded`). G4 in Phase 6 blocks on `pending`.
 
-### 11. Hand off
+---
 
-End your turn with exactly this instruction to the user:
+## Phase 6 — Admission loop
 
-> Spec, type contract, and umbrella drafted at:
-> - `<spec_dir>/<name>.md`
-> - `<type_contract_path>`
-> - `<umbrella test path>`
->
-> Unstated-assumptions log at `<spec_dir>/<name>.UNSTATED.md` — all entries resolved.
->
-> Run `/swarm-spawn` next. The decomposition step will read the spec, contract, and confirmed-RED umbrella, and emit one leaf brief per parallel sub-agent.
+For every leaf with staged output at `.swarm/pending/leaf-NN/`, in ascending NN order:
 
-## What this skill must not do
+### 6.0 Bypass detection
 
-- Write impl code. The only "code" this skill writes is the umbrella test, which is a *behavioral assertion file* — it imports from the contract and asserts on its behavior. It never writes the impl behind those assertions.
-- Pick any architecture / design value without surfacing it for user approval (steps 5, 7, 9) or flagging it in `.UNSTATED.md` (step 10). Both options are valid; silence is not.
-- Skip step 10 (the unstated-sweep) even if you believe you have nothing to flag. The forced scan is the gate that keeps circular grounding safe.
-- Skip any review gate (steps 2, 5, 7, 9) because "the user obviously meant X." Obvious meanings are the precise place silent design picks hide.
-- Delegate any drafting step to a sub-agent. The parent chat IS the planning authority. Sub-agents exist only to execute pre-audited leaf briefs after `/swarm-review` passes — and only `/swarm-spawn`'s briefs reach that audit. Drafting via sub-agent reintroduces the failure mode the cascade exists to prevent: a non-overlord making design decisions invisible to the audit. Stock Claude defaults that say "delegate big drafting jobs to protect context" do not apply here.
-- Auto-invoke `/swarm-spawn` at the end. Hand-off is an *instruction to the user*, not a side effect. The parent decides when to advance to decomposition.
-- Edit any file outside the three artifact paths (spec, contract, umbrella) and their `.UNSTATED.md` companion. In particular, do not create or modify files in `briefs_dir/` — that is `/swarm-spawn`'s territory.
-- Continue past a review gate (steps 2, 5, 7, 9, 10) without explicit approval **in interactive mode**. Silence ≠ approval. If the user is unresponsive in interactive mode, stop and wait. **In non-interactive mode**, log the unresolved gate as an `.UNSTATED.md` entry with Disposition `flagged-for-spawn` and continue — do not hang waiting for a human who is not there.
-- Run `/swarm-spawn`, `/swarm-review`, or `/swarm-post-review` itself. /swarm's job ends at step 11 — "Hand off."
+Read `.swarm/post-review-log.md`. List all `leaf-NN.md` files in `briefs_dir` whose NN predates the current leaf. Any prior leaf_id absent from the log is a bypass — it was never gated. If bypass found:
 
-## Why this skill exists
+> ⚠ BYPASS: `leaf-NN` has a brief but no post-review-log entry. The file-match rule, parent-owned check, and umbrella were never verified for it. Confirm whether to audit now or accept the risk before continuing.
 
-The cascade structurally prevents three failure modes in parallel-agent TDD work: leaves stepping on each other's files, leaves quietly making design decisions, and leaves receiving tasks too big to finish coherently. But the cascade is only as good as its inputs — if the spec, contract, and umbrella that `/swarm-spawn` consumes were themselves silently invented, the audit chain has nothing real to anchor against.
+Do not silently continue past a detected bypass.
 
-`/swarm` is the skill that produces those inputs *with the user in the loop at every design decision*. The user is the source of truth. The skill is the procedure for translating user intent into design artifacts without slipping in silent picks along the way. The `.UNSTATED.md` log is the forced surface area for any pick the procedure could not trace to the user — every entry resolved before hand-off means every design decision in the spec, contract, and umbrella is either user-approved or explicitly accepted as a flagged assumption that `/swarm-spawn`'s downstream sweep will see.
+If `post-review-log.md` exists but lacks the required header (see 6.7), warn — the audit trail may have been tampered with.
 
-Four commands, three safety nets, one cascade. `/swarm` is the entry point.
+### 6.1 G7 wave-sweep check (first admission of wave only)
+
+If this is the first admission for this wave: require `.swarm/wave-<wave>.SWEEP.md` to exist and to have an mtime newer than every `leaf-NN.ASSUMPTIONS.md` for this wave. If missing → block. If older than any leaf ASSUMPTIONS → block (re-run Phase 5.2).
+
+For subsequent admissions of the same wave, skip this gate (it passed at first admission).
+
+### 6.2 Verify staging non-empty
+
+`.swarm/pending/leaf-NN/` must exist and contain ≥ 1 file. If empty: reject — the leaf reported green but staged nothing. Re-spawn or escalate.
+
+### 6.3 File-match rule
+
+Read the brief. Take the union of `test_files` + `impl_files`; call it `declared`. The staging directory must contain exactly `declared` — same count, same paths (relative to project root). No extras, no missing, no renames.
+
+- Count mismatch → reject.
+- Path mismatch → reject.
+
+When `test_owned_by: parent` (default in this skill — overlord wrote the tests), the test files in `declared` are still in scope for file-match (the leaf may not modify them, but they live at the same paths the brief declares).
+
+### 6.4 G1 parent-owned check
+
+For every staged file path, check it does NOT match any glob in `parent_owned`. Any match → reject. A leaf that needed to touch parent territory made a design decision the cascade forbids; the right fix is a contract proposal (Phase 5.3), not a direct edit.
+
+### 6.5 Gate sweep (G2–G6)
+
+- **G2 ASSUMPTIONS file** — note presence/absence. Do not block on absence (means brief was concrete). Do block if brief's prose implies inference happened but no log exists.
+- **G3 open-question** — every published question must have a matching answer OR an ASSUMPTIONS entry tagged `unanswered: true`. If a parent answer disagrees with the leaf's recorded inference → block (the leaf wrote against the wrong assumption).
+- **G4 contract-proposal** — `.swarm/proposals/leaf-NN.md` must not be `status: pending`. If `accepted`, verify the target parent-owned file actually contains the change (grep for an identifying line).
+- **G5 wave-snapshot integrity** — for every path in `.swarm/wave-<wave>.snapshot.json` that is NOT in this leaf's footprint, recompute SHA-256. Any drift → block (some leaf wrote outside its staging dir).
+- **G6 escalation-trigger** — for every `escalation_triggers:` entry with a `detect:` command in this brief, run the command with `$STAGING_DIR=.swarm/pending/leaf-NN/`. If a trigger fires and no `.swarm/escalations/leaf-NN.md` exists → block.
+
+### 6.6 Umbrella pre-admission
+
+Run `umbrella_test_cmd`. Capture per-test named results — for pytest, add `-v --tb=no -q` if not already present. Record `pre_passing_tests` (set of named passes) and `pre_count`.
+
+If the runner emits count-only output, note: per-test regression detection will be count-only (weaker gate).
+
+### 6.7 Copy + post-admission umbrella
+
+For every path in the brief's `test_files + impl_files`: if a file exists at that destination, snapshot it to `.swarm/backups/leaf-NN/<path>` (mirroring the dest layout). If no file exists yet (new file), record the absence — revert will delete instead of restore.
+
+Copy every staged file from `.swarm/pending/leaf-NN/` to its destination path. All declared files copied; no partial admissions.
+
+Run `umbrella_test_cmd` again. Capture `post_passing_tests` + `post_count`.
+
+If the brief has an `## Acceptance` block with a test command, run it as a second independent gate. Both umbrella and brief acceptance must pass.
+
+### 6.8 Decide
+
+**Per-test regression check first** (regardless of net count):
+
+- `regressed = pre_passing_tests − post_passing_tests`
+- Non-empty → **revert** (skip to 6.9b).
+- Count-only mode → skip set-diff, note: count-based gate only, weaker.
+
+**Net count + expected delta:**
+
+- More tests pass → admit (6.9a).
+- Same → yellow flag, possible integration-boundary slice; ask user before admitting.
+- Fewer → revert (6.9b).
+
+### 6.9a Admit
+
+- Staged files are already in place (copied in 6.7).
+- Delete `.swarm/pending/leaf-NN/`.
+- If `post-review-log.md` does not yet exist, create with this header:
+
+```
+# Post-Review Log — append-only, do not edit manually
+# Editing this file invalidates bypass-detection.
+
+| leaf_id | files | delta | timestamp | status |
+|---------|-------|-------|-----------|--------|
+```
+
+- Append one row:
+
+```
+| leaf-NN | <impl_files>, <test_files> | +N | <ISO timestamp> | clean |
+```
+
+The log is append-only. Never edit, reorder, or delete entries.
+
+- If `graphify_cmd` is set, run it and inspect for unexpected couplings (new import edge between leaf-owned modules that wasn't in the design). Flag for user; do not block.
+
+### 6.9b Revert
+
+- For every backup under `.swarm/backups/leaf-NN/`: overwrite the destination with backup contents.
+- For every declared file that had no backup (new file): delete from destination.
+- Delete `.swarm/pending/leaf-NN/`.
+- Append to `post-review-log.md`:
+
+```
+| leaf-NN | <impl_files>, <test_files> | REVERTED | <ISO timestamp> | regression: <test-name> |
+```
+
+- Append a `## Post-review regression` block to `<briefs_dir>/leaf-NN.md` noting the regressed test + staged diff summary.
+- Continue the admission loop with the next leaf — one revert does not stop the rest of the wave.
+
+---
+
+## Phase 7 — Final report
+
+After every leaf in the wave has been processed:
+
+### 7.1 Apex test (if configured)
+
+If `apex_test_cmd` is set in `.claude-swarm.toml`, run it. Apex is the behavioral integration test — distinct from `umbrella_test_cmd` (per-leaf isolation). Apex catches the failure mode where every leaf's umbrella passed but the integration composes incorrectly.
+
+Apex failure does NOT auto-revert (multiple leaves admitted; attributing the failure to one is a separate forensic step). Report the failure + suggest investigation paths (likely candidate: any leaf whose test was source-grep heavy rather than behavioral).
+
+### 7.2 Report
+
+Print to the user:
+
+```
+Wave <wave> complete.
+
+| leaf    | delta | status   |
+|---------|-------|----------|
+| leaf-01 | +2    | clean    |
+| leaf-02 | REVERTED | regression: tests/test_cache.py::test_miss |
+| ...     |       |          |
+
+Totals: N admitted, M reverted, K escalated.
+Apex: <PASS | skipped | FAILED>.
+```
+
+### 7.3 Direction for follow-ups
+
+- For each reverted leaf: name the regressed test, point at the appended `## Post-review regression` block, suggest re-spawn with corrected brief.
+- For each escalation (G3/G4/G6 blocks resolved during the loop): list what got resolved and how.
+- For wave-sweep flags accepted as patches: confirm the patches landed.
+
+End the turn.
+
+---
+
+## What this skill does NOT do
+
+- **Write impl code itself.** The overlord writes spec, contract, umbrella, and per-leaf tests. Impl is the leaf's job.
+- **Delegate planning to a sub-agent.** Spec drafting, brief emission, gate enforcement all stay in the overlord chat. Delegating planning re-introduces the failure mode the cascade exists to prevent: a non-overlord making design decisions invisible to the audit trail.
+- **Use git.** All state lives in `.swarm/`. Staging dir replaces branches; backup dir replaces revert; post-review-log replaces git log; per-test set-diff replaces commit metadata for regression attribution. The cascade's guarantees are equivalent; the one thing lost is cryptographic commit signing (acceptable in single-project trust models).
+- **Auto-spawn leaves before Phase 3 passes.** Phase 4 only fires after Phase 3 reports `all PASS`. Pre-audit spawn re-introduces every failure mode the audit prevents.
+- **Make architecture decisions silently.** Phase 1 surfaces Bible Compliance + each draft as an explicit approval gate. Phase 2 surfaces fat-file collisions + leaf-count guardrails. Phase 3 surfaces invariant violations. Phase 5 surfaces aggregated assumption drift. Phase 6 surfaces per-leaf gate failures. Silence at any of these is the failure mode; explicit user choice is the success path.
+
+---
+
+## File-mediated coordination (recap)
+
+Leaves never message each other directly — the cascade is a tree, leaf-to-leaf edges would destroy regression attribution. Three file-mediated patterns let them coordinate, all parent-arbitrated:
+
+| Pattern | What | Gate |
+|---|---|---|
+| Sibling-ASSUMPTIONS read | Leaf reads (never writes) sibling `.ASSUMPTIONS.md` before logging its own inferences. Catches drift at leaf-time. | Brief boilerplate; no skill enforcement |
+| Question ledger | Leaf publishes `.swarm/questions/leaf-NN-Q<n>.md`; parent answers in `.swarm/answers/`. Leaf proceeds under best-guess, tags ASSUMPTIONS `unanswered: true`. | G3 (Phase 6.5) |
+| Contract proposals | Leaf publishes `.swarm/proposals/leaf-NN.md` instead of editing parent-owned files. Parent applies + marks accepted. | G4 (Phase 6.5) |
+
+Full theory at `~/.claude/skills/swarm-shared/references/playbook.md`.
+
+---
+
+## Task-size discipline
+
+The leaf-count guardrail in Phase 2.2 (warn > 12, refuse > 16) reflects empirical observation: past ~12 simultaneous sub-agents in a single wave, drift between siblings climbs, the overlord's context fills with leaf reports, and the assumption-sweep starts missing cross-leaf contradictions because it gets long.
+
+When the spec genuinely needs more than 12 slices, break into sequential waves. Wave 1 admits, wave 2 picks up; cross-wave file edits are explicitly allowed (`wave:` field on the brief sequences them). One large feature, two clean waves of 8–10 leaves each, is materially safer than one wave of 18.
+
+The refusal at >16 is non-negotiable in this skill. If the user wants to push past it, that decision belongs upstream — re-scope the spec, not the gate.

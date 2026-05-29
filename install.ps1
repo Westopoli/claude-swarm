@@ -11,10 +11,23 @@ $ErrorActionPreference = "Stop"
 
 $REPO_URL = "https://github.com/Westopoli/claude-swarm"
 $SKILLS_DIR = Join-Path $env:USERPROFILE ".claude\skills"
-$SKILLS = @("swarm", "swarm-spawn", "swarm-review", "swarm-post-review", "swarm-shared")
+$SKILLS = @("swarm", "swarm-shared")
 
 Write-Host "claude-swarm -- installing to $SKILLS_DIR"
 New-Item -ItemType Directory -Force -Path $SKILLS_DIR | Out-Null
+
+# Clean up absorbed skills from prior installs (pre-collapse cascade).
+# These were folded into the unified /swarm in v2.
+$LEGACY = @("swarm-spawn", "swarm-review", "swarm-post-review", "swarm-merge")
+foreach ($legacy in $LEGACY) {
+    $legacyPath = Join-Path $SKILLS_DIR $legacy
+    if (Test-Path $legacyPath) {
+        $timestamp = Get-Date -Format "yyyyMMddHHmmss"
+        $backup = "${legacyPath}.bak.$timestamp"
+        Write-Host "  ${legacy}: legacy install found (absorbed into /swarm); backing up to $(Split-Path -Leaf $backup)"
+        Move-Item $legacyPath $backup
+    }
+}
 
 # Determine source: local checkout or fresh clone.
 # $MyInvocation.MyCommand.Definition returns the pipe string when run via irm|iex,
@@ -51,6 +64,3 @@ if ($TMP) { Remove-Item -Recurse -Force $TMP -ErrorAction SilentlyContinue }
 Write-Host ""
 Write-Host "Done. Restart Claude Code, then try:"
 Write-Host "  /swarm"
-Write-Host "  /swarm-spawn"
-Write-Host "  /swarm-review"
-Write-Host "  /swarm-post-review"

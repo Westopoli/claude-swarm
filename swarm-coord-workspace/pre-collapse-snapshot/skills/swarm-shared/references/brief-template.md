@@ -1,6 +1,6 @@
 # Leaf Brief — Canonical Template
 
-Every leaf brief emitted by `/swarm` Phase 2 follows this shape. `/swarm` Phase 3 (via `check_invariants.py`) parses these fields directly and will fail audit if any are missing or malformed.
+Every leaf brief emitted by `/swarm-spawn` follows this shape. `/swarm-review` parses these fields directly and will fail audit if any are missing or malformed.
 
 A brief is the *entire* context a leaf agent receives. Nothing else. No project overview, no rationale, no description of sibling leaves. The minimum that lets the leaf finish its slice without needing to make a decision.
 
@@ -42,17 +42,17 @@ test_assertion_budget: <int>
 # sequentially (e.g. wave-2 follow-up edits a file wave-1 already owned).
 # Cross-wave leaves skip overlap + do_not_edit checks against each other.
 # wave: 1
-# Optional: codebase preconditions. /swarm Phase 3.1 runs each `verify:`
+# Optional: codebase preconditions. /swarm-review runs each `verify:`
 # command; non-zero exit = brief makes a false claim about codebase state.
 # Required when the brief asserts that some prior code/state exists
-# ("X is in place", "Y was added in wave N-1"). Without verify, Phase 3.1
+# ("X is in place", "Y was added in wave N-1"). Without verify, /swarm-review
 # heuristic-warns on claim-words in task prose but cannot block.
 # codebase_preconditions:
 #   - name: "wave-2 gate exists"
 #     verify: "grep -q 'def wave2_gate' src/gates.py"
 #   - name: "damage.py has cover term"
 #     verify: "grep -qE '\\(1\\.0 - cover\\)' simulation/damage.py"
-# Optional: escalation triggers with `detect:` commands. /swarm Phase 6.5 G6
+# Optional: escalation triggers with `detect:` commands. /swarm-post-review G6
 # runs each detect command at admission time; if any exit 0 (match found) and
 # no `.swarm/escalations/leaf-NN.md` exists, the admission blocks.
 # escalation_triggers:
@@ -74,7 +74,7 @@ Run `<test command>` for this test_file. Confirm RED. Implement in impl_file
 only. Confirm GREEN. Write your final `test_file` and `impl_file` to
 `.swarm/pending/leaf-NN/` mirroring their paths from the project root
 (e.g. `src/cache.py` → `.swarm/pending/leaf-03/src/cache.py`). Stop.
-Do not copy files to their real destinations — `/swarm` Phase 6 does that after gating.
+Do not copy files to their real destinations — `/swarm-post-review` does that after gating.
 
 ## Escalation triggers
 
@@ -157,7 +157,7 @@ If the brief is ambiguous on a point that materially shapes your impl (an API sh
 
 4. **You may not delete a question file you wrote** — it is part of the audit trail. Status flips happen by the parent writing an answer.
 
-If the question is not resolved by admission time, `/swarm` Phase 6.5 gate G3 blocks: either parent must answer or you must keep the `unanswered: true` tag (which makes the inference explicit and reviewable).
+If the question is not resolved by admission time, `/swarm-post-review` G3 blocks: either parent must answer or you must keep the `unanswered: true` tag (which makes the inference explicit and reviewable).
 
 ## Contract-proposal protocol (when a parent-owned file must change)
 
@@ -189,14 +189,14 @@ If satisfying your brief requires a change to a parent-owned file (a type contra
 
 3. The parent will set status to `accepted` (after applying the diff to the target file), `rejected` (you re-plan), or `superseded` (a related leaf already covered it).
 
-4. `/swarm` Phase 6.5 gate G4 blocks any leaf whose proposal is still `pending` at admission time, or whose proposal is marked `accepted` but the target file does not actually contain the change.
+4. `/swarm-post-review` G4 blocks any leaf whose proposal is still `pending` at admission time, or whose proposal is marked `accepted` but the target file does not actually contain the change.
 
 Never copy the parent-owned file into your impl as a workaround. Duplication is silent drift; the proposal protocol is how you make the need visible.
 ```
 
 ---
 
-## What `/swarm` Phase 3 (`check_invariants.py`) checks per brief
+## What `/swarm-review` checks per brief
 
 | Field | Check |
 |---|---|
@@ -209,8 +209,8 @@ Never copy the parent-owned file into your impl as a workaround. Duplication is 
 | `test_owned_by` (optional) | `parent` or `leaf`. Default `leaf`. |
 | `wave` (optional) | Integer ≥ 1. Default 1. Cross-wave leaves are sequenced, not parallel. |
 | `impl_line_budget`, `test_assertion_budget` | Set, ≤ project max from `.claude-swarm.toml`. |
-| `codebase_preconditions` (optional) | Each `verify:` command exits 0. If task prose contains claim-words ("already", "in place", "exists as of", "previously added") without backing preconditions, Phase 3.1 heuristic-warns. |
-| `escalation_triggers` (optional) | Each `detect:` command (if present) is well-formed shell. Runtime check is Phase 6.5 G6. |
+| `codebase_preconditions` (optional) | Each `verify:` command exits 0. If task prose contains claim-words ("already", "in place", "exists as of", "previously added") without backing preconditions, /swarm-review heuristic-warns. |
+| `escalation_triggers` (optional) | Each `detect:` command (if present) is well-formed shell. Runtime check is /swarm-post-review G6. |
 | Task prose | No ambiguous verbs from the configured list. |
 
 A brief that fails any of these checks blocks the entire decomposition. The parent restructures and re-emits before any leaf is spawned.

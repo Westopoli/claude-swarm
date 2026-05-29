@@ -1,0 +1,28 @@
+# claude-swarm — project config
+# Place at project root. Delete keys to inherit defaults.
+
+spec_dir          = "specs/"
+briefs_dir        = ".swarm/briefs/"
+type_contract_path = "src/<pkg>/types.py"
+
+umbrella_test_cmd = "pytest tests/umbrella.py"
+graphify_cmd      = ""
+
+parent_owned = [
+  "src/**/types.py",
+  "tests/conftest.py",
+  "tests/umbrella*.py",
+  "tests/integration/**",
+]
+
+[invariants]
+max_impl_lines      = 200
+max_test_assertions = 20
+ambiguous_verbs = [
+  "decide", "choose", "design", "determine",
+  "figure out", "resolve", "as appropriate",
+  "use your judgment", "pick", "select an approach",
+]
+
+[gates]
+extra_spec_gate_cmds = []

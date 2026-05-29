@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
 """claude-swarm — deterministic 3-invariant audit on leaf briefs.
 
-Invoked by /swarm Phase 3. Reads every *.md brief in briefs_dir, parses the YAML
+Invoked by /swarm-review. Reads every *.md brief in briefs_dir, parses the YAML
 frontmatter, and validates against the three invariants defined in
 ~/.claude/skills/swarm-shared/references/playbook.md:
 
     (a) file-ownership non-overlap
     (b) no design decisions delegated to the leaf
     (c) sizing within configured budgets
-    (d) spec-link rule (every brief-declared test file begins with a
-        `# spec: <path>::<section>::AC-<N>` header)
 
 Output: one line per brief plus a summary line. Exit code 0 only if all briefs
 pass. Designed to be called from a shell snippet inside SKILL.md so the audit
@@ -326,36 +324,6 @@ def _load_contract_symbols(root: Path, contract_path: str) -> set[str] | None:
     return syms
 
 
-SPEC_LINK_RE = re.compile(r"^#\s*spec:\s*\S+::\S+::AC-\d+", re.MULTILINE)
-
-
-def check_spec_link(briefs: list[Brief], root: Path) -> list[Failure]:
-    """Every brief-declared test file must start with a `# spec: ...::AC-N` header.
-
-    The header anchors the test back to the spec line it encodes. Phase 2 of the
-    /swarm cascade requires the overlord to write tests with this header; this
-    check enforces it before any leaf spawns.
-    """
-    fails: list[Failure] = []
-    for b in briefs:
-        for path in _leaf_paths(b, "test"):
-            p = root / path
-            if not p.exists():
-                # Phase 2 should have written it. Missing test file at audit-time
-                # is itself a failure — leaves cannot run against a non-existent test.
-                fails.append(Failure(b.leaf_id, "spec-link",
-                    f"declared test file `{path}` not found on disk — "
-                    f"overlord must write per-leaf tests before audit"))
-                continue
-            head = p.read_text().splitlines()[:5]  # only scan first 5 lines
-            head_text = "\n".join(head)
-            if not SPEC_LINK_RE.search(head_text):
-                fails.append(Failure(b.leaf_id, "spec-link",
-                    f"test file `{path}` missing Spec Link Rule header "
-                    f"`# spec: <path>::<section>::AC-<N>` in first 5 lines"))
-    return fails
-
-
 def check_sizing(briefs: list[Brief], invariants: dict[str, Any]) -> list[Failure]:
     fails: list[Failure] = []
     max_lines = int(invariants["max_impl_lines"])
@@ -391,7 +359,6 @@ def audit(briefs_dir: Path, cfg: dict[str, Any], root: Path) -> Report:
         cfg["invariants"]["ambiguous_verbs"],
     ))
     rpt.failures.extend(check_sizing(rpt.briefs, cfg["invariants"]))
-    rpt.failures.extend(check_spec_link(rpt.briefs, root))
     return rpt
 
 

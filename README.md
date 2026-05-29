@@ -10,14 +10,11 @@
 
 A Claude Code skill pack that lets you run many AI sub-agents in parallel without the usual failure modes: overlapping file edits, silent design decisions, oversized tasks, regressions slipping past admission.
 
-Four slash commands. A dozen layered gates. One tree-shaped cascade.
+One slash command. Eight phases. A dozen layered gates. One tree-shaped cascade.
 
 | Command | What it does |
 |---|---|
-| `/swarm` | Discovery step (optional, for users starting from scratch). Interviews you, drafts a spec, drafts a minimal type contract, drafts a failing umbrella test, and surfaces every assumption it had to make for your approval before handing off. |
-| `/swarm-spawn` | Decomposition. Takes a locked spec + type contract + umbrella test and emits one task description per sub-agent. Skip `/swarm` and start here if you already have those inputs. |
-| `/swarm-review` | Audits task descriptions before any sub-agent starts. Blocks on overlap, ambiguous design language, oversize, and unverified codebase-state claims (`verify:` commands on briefs). |
-| `/swarm-post-review` | Audits each sub-agent's output and admits it. Runs ten gates per admission (G1–G7 + ASSUMPTIONS + bypass + apex) and reverts if the umbrella regresses. See [Gate reference](#gate-reference). |
+| `/swarm` | The whole cascade in one command. Drafts spec/contract/umbrella if missing (lite-discovery), decomposes the spec into per-sub-agent briefs, writes a failing test per sub-agent, audits the briefs, spawns sub-agents in parallel, waits for green, runs an aggregate assumption-sweep, then admits each sub-agent through G1–G7 + the umbrella regression check. Reverts via file-backup on regression. No git, no chained commands, no `.UNSTATED.md` ceremony. |
 
 ---
 
@@ -70,24 +67,17 @@ Each sub-task is one test file + one impl file. The sub-task is done when its ow
 ### With claude-swarm
 
 ```
-   [optional] /swarm  ──►  spec + type contract + umbrella (RED)
-                              user-confirmed at every step
-                              (skip if you already have these)
-                  │
-                  ▼
-   /swarm-spawn  ──►  sub-task descriptions      (umbrella test failing, locked in)
-                  │
-                  ▼
-             /swarm-review  ──►  PASS / FAIL
-                  │ (only on PASS)
-                  ▼
-       spawn sub-agents in parallel
-                  │
-                  ▼
-       for each green sub-task: /swarm-post-review
-                  │
-                  ▼
-            umbrella test passes → wave done
+   /swarm  ──►  Phase 0  preflight (config + check which inputs exist)
+                Phase 1  lite-discovery (drafts spec/contract/umbrella only if missing,
+                          with Bible Compliance footer on the spec)
+                Phase 2  decompose: emit briefs + write per-leaf failing tests
+                          (Spec Link Rule headers, task-size guardrail >12/>16)
+                Phase 3  audit briefs (check_invariants.py — block on FAIL)
+                Phase 4  spawn N sub-agents in parallel
+                Phase 5  wait green; aggregate assumption-sweep → wave-N.SWEEP.md
+                Phase 6  admission loop: G1–G7 + umbrella pre/post per leaf
+                          (admit or revert from file backup)
+                Phase 7  final report: counts + follow-ups + apex test
 ```
 
 ## Benchmarks
@@ -114,30 +104,32 @@ Paired evals (one with `claude-swarm`, one without), each targeting a specific f
 
 - **8/8 evals**: correct verdict with the skill.
 - **3/8 evals (B, E, G)**: baseline silently failed a safety property; skill blocked.
-- **0 false positives** on `/swarm-review` audit verdicts.
+- **0 false positives** on Phase 3 audit verdicts.
 - Coord-pattern suite (F/G/H): old skill 78% ± 38%, new skill 100% ± 0%.
 
 The load-bearing evals are B, E, and G: real time gets lost when those gates get skipped in production work. The skill blocked all three.
 
 ## What you get
 
-| Skill | What |
+| Component | What |
 |---|---|
-| `/swarm` | Discovery (optional). Intent → spec + minimal type contract + failing umbrella test. Every architecture decision is either user-approved at an explicit gate or flagged in `.UNSTATED.md` for resolution before hand-off. Skip if you already have these three artifacts. |
-| `/swarm-spawn` | Plans the wave: short intake interview, runs your project's gate commands, reads the (already-failing) umbrella test, emits one task description per sub-agent. |
-| `/swarm-review` | Runs a deterministic audit script. Blocks if any two tasks edit the same file, if any task contains ambiguous design verbs (`decide`, `figure out`, …), or if any task exceeds the size budget. |
-| `/swarm-post-review` | Audits and admits each sub-agent's output. Staged files must match the brief's declared `impl_files` + `test_files` (one or more of each). Runs ten gates (G1–G7, ASSUMPTIONS, bypass, apex). Reverts if the umbrella regresses. |
-| `check_invariants.py` | Standalone audit script — runnable in CI without Claude Code. |
-| `playbook.md` | The full theory: why each invariant exists, what failure mode it prevents. |
+| `/swarm` | The single command. Drives all eight phases — preflight, lite-discovery, decompose, audit, spawn, sweep, admission loop, report. |
+| `check_invariants.py` | Deterministic audit script run at Phase 3. Standalone — runnable in CI without Claude Code. Checks file-overlap, no-design, sizing, and the Spec Link Rule (every test file headers `# spec: <path>::<section>::AC-<N>`). |
+| `playbook.md` | Full theory: why each invariant exists, what failure mode it prevents, prep-step seam discipline, file-mediated coordination patterns. |
+| `brief-template.md` | Canonical leaf-brief shape. `/swarm` Phase 2 emits briefs against this template; Phase 3 audits against it. |
 
 ## How it works
 
-1. **Define "done".** Write one failing test that captures what the wave needs to achieve. Without this, the workflow has nothing to anchor to.
-2. **Plan the sub-tasks.** `/swarm-spawn` interviews you briefly, then writes one task description per sub-agent. Each task owns one or more impl files + one or more test files, declared in the brief's `impl_files` / `test_files` frontmatter. (If you're starting from scratch and don't yet have the failing test, run `/swarm` first — it walks you through drafting the spec, the type contract, and the umbrella test with explicit user-confirmation gates.)
-3. **Audit before spawning.** `/swarm-review` runs the audit script. Any failure blocks the workflow — you cannot proceed to step 4 with a failing audit.
-4. **Spawn sub-agents in parallel.** One agent per task description. They never message each other directly — all coordination is file-mediated and parent-arbitrated (see [Coordination model](#coordination-model) below).
-5. **Post-review each finished sub-agent.** `/swarm-post-review` checks staged files, reruns the umbrella test, admits on green, reverts on regression.
-6. **Sweep assumptions.** When everything's green, the parent sweeps every sub-agent's assumption log for drift. Anything that contradicts the requirements or shared types surfaces as a flagged entry with a suggested patch.
+`/swarm` walks through eight phases without you having to invoke anything else:
+
+1. **Preflight (Phase 0).** Find or bootstrap `.claude-swarm.toml`. List which of {spec, contract, umbrella} already exist on disk.
+2. **Lite-discovery (Phase 1).** Fires only for missing inputs. One-question drafts per artifact — spec, type contract, failing umbrella test. The spec carries a Bible Compliance footer (cites your source-of-truth doc + lists deliberate divergences). No `.UNSTATED.md` ceremony.
+3. **Decompose (Phase 2).** Reads spec + contract, emits one brief per sub-agent at `<briefs_dir>/leaf-NN.md`, AND writes a failing test for each brief (overlord-owned tests; leaves only write impl). Refuses to emit more than 16 leaves in one wave; warns past 12. Every test file begins with a `# spec: <path>::<section>::AC-<N>` header (Spec Link Rule).
+4. **Audit (Phase 3).** Runs `check_invariants.py`. Any FAIL → fix the brief and re-run. No spawn until PASS.
+5. **Spawn (Phase 4).** One sub-agent per brief, in parallel — single message with N `Task()` calls. Each sub-agent's prompt says: "tests at X are failing; write impl at Y to make them pass; do not modify tests; stage at `.swarm/pending/leaf-NN/`."
+6. **Wait + sweep (Phase 5).** Wait for every sub-agent to report green. Then run the aggregate assumption-sweep — read every `leaf-NN.ASSUMPTIONS.md`, classify drift (contradicts-spec, contradicts-bible, cross-leaf, fabricated, compounded), write `.swarm/wave-N.SWEEP.md`. User picks patch-vs-redo per flagged entry.
+7. **Admission loop (Phase 6).** Per leaf: G1–G7 gates → file-match → umbrella pre/post → admit-or-revert. Backup-based revert (no git). Append-only `post-review-log.md` for audit trail.
+8. **Report (Phase 7).** Counts of admitted/reverted/escalated. Apex test if configured. Direction for follow-up work.
 
 ## Coordination model
 
@@ -146,8 +138,8 @@ The cascade is a tree: parent at root, leaves at fringe, no edges between leaves
 | Pattern | What | Where it fires |
 |---|---|---|
 | **Sibling-ASSUMPTIONS read** | Leaves read (never write) other leaves' `.ASSUMPTIONS.md` before logging their own. Catches drift at leaf-time instead of admission-time. | Leaf brief boilerplate |
-| **Question ledger** | Leaf publishes `.swarm/questions/leaf-NN-Q<n>.md` instead of inferring silently. Parent answers asynchronously in `.swarm/answers/`. | `/swarm-post-review` **G3** gate enforces resolution |
-| **Contract proposals** | Leaf publishes `.swarm/proposals/leaf-NN.md` instead of editing parent-owned files. Parent applies + accepts. | `/swarm-post-review` **G4** gate verifies application |
+| **Question ledger** | Leaf publishes `.swarm/questions/leaf-NN-Q<n>.md` instead of inferring silently. Parent answers asynchronously in `.swarm/answers/`. | `/swarm` Phase 6.5 **G3** gate enforces resolution |
+| **Contract proposals** | Leaf publishes `.swarm/proposals/leaf-NN.md` instead of editing parent-owned files. Parent applies + accepts. | `/swarm` Phase 6.5 **G4** gate verifies application |
 
 What's intentionally **not** built: direct leaf-to-leaf messaging, shared mutable state, synchronous waits, cross-leaf impl reads from `.swarm/pending/`. Each would re-introduce a failure mode the cascade exists to prevent.
 
@@ -155,26 +147,29 @@ What's intentionally **not** built: direct leaf-to-leaf messaging, shared mutabl
 
 Every safety net is a numbered gate. Each runs at a specific point in the workflow.
 
-| Gate | What | Skill |
+| Gate | What | Phase |
 |---|---|---|
-| `non-overlap` | No two briefs name the same impl file. | `/swarm-review` |
-| `no-design` | No ambiguous verbs in task prose; no symbols outside the locked contract. | `/swarm-review` |
-| `sizing` | Impl/test budgets within configured caps. | `/swarm-review` |
-| `codebase-preconditions` | `verify:` commands on briefs that claim codebase state pass. | `/swarm-review` |
-| `weak-umbrella` heuristic | Umbrella test asserts on *behavior*, not source-grep. | `/swarm` step 8 (if drafted) / `/swarm-spawn` step 4 (if pre-existing) |
-| `G1` parent-owned | No staged file matches `parent_owned` globs. | `/swarm-post-review` |
-| `G2` ASSUMPTIONS | Inferences are logged, not buried. | `/swarm-post-review` |
-| `G3` open-question | Every published question has an answer or `unanswered: true` ack. | `/swarm-post-review` |
-| `G4` contract-proposal | No `pending` proposals; `accepted` proposals are actually applied. | `/swarm-post-review` |
-| `G5` wave-snapshot integrity | No file outside the leaf's footprint changed since wave start. | `/swarm-post-review` |
-| `G6` escalation-trigger | Any brief-declared `detect:` command that matches requires a filed escalation. | `/swarm-post-review` |
-| `G7` wave-sweep | Parent's aggregate assumption-sweep ran before first admission of wave. | `/swarm-post-review` |
-| `apex-test` | Behavioral integration test passes after all leaves of the queue are admitted. | `/swarm-post-review` queue completion |
-| `bypass-detection` | Every prior leaf was gated through `/swarm-post-review`; no leaf landed without audit. | `/swarm-post-review` |
+| `non-overlap` | No two briefs name the same impl file. | Phase 3 |
+| `no-design` | No ambiguous verbs in task prose; no symbols outside the locked contract. | Phase 3 |
+| `sizing` | Impl/test budgets within configured caps. | Phase 3 |
+| `spec-link` | Every brief-declared test file begins with `# spec: <path>::<section>::AC-<N>`. | Phase 3 |
+| `codebase-preconditions` | `verify:` commands on briefs that claim codebase state pass. | Phase 3.1 |
+| `task-size` | Wave has ≤ 12 leaves (warn 13–16, refuse > 16). | Phase 2.2 |
+| `bible-compliance` | Spec cites the source-of-truth doc + lists deliberate divergences. | Phase 1.A |
+| `weak-umbrella` heuristic | Umbrella asserts on behavior, not source-grep. | Phase 1.C (drafting) |
+| `G1` parent-owned | No staged file matches `parent_owned` globs. | Phase 6.4 |
+| `G2` ASSUMPTIONS | Inferences are logged, not buried. | Phase 6.5 |
+| `G3` open-question | Every published question has an answer or `unanswered: true` ack. | Phase 6.5 |
+| `G4` contract-proposal | No `pending` proposals; `accepted` proposals are actually applied. | Phase 6.5 |
+| `G5` wave-snapshot integrity | No file outside the leaf's footprint changed since wave start. | Phase 6.5 |
+| `G6` escalation-trigger | Any brief-declared `detect:` command that matches requires a filed escalation. | Phase 6.5 |
+| `G7` wave-sweep | Aggregate assumption-sweep ran before first admission of wave. | Phase 6.1 |
+| `apex-test` | Behavioral integration test passes after all leaves are admitted. | Phase 7.1 |
+| `bypass-detection` | Every prior leaf was gated through Phase 6; no leaf landed without audit. | Phase 6.0 |
 
 ## Install
 
-Copies the skills into `~/.claude/skills/`. Restart Claude Code, then invoke any of `/swarm`, `/swarm-spawn`, `/swarm-review`, `/swarm-post-review`.
+Copies the skills into `~/.claude/skills/`. Restart Claude Code, then invoke `/swarm`.
 
 **macOS / Linux**
 ```bash
@@ -206,12 +201,12 @@ cd claude-swarm
 
 ```bash
 # macOS / Linux
-rm -rf ~/.claude/skills/{swarm,swarm-spawn,swarm-review,swarm-post-review,swarm-shared}
+rm -rf ~/.claude/skills/{swarm,swarm-shared}
 ```
 
 ```powershell
 # Windows
-Remove-Item -Recurse -Force $env:USERPROFILE\.claude\skills\swarm*, $env:USERPROFILE\.claude\skills\swarm-shared
+Remove-Item -Recurse -Force $env:USERPROFILE\.claude\skills\swarm, $env:USERPROFILE\.claude\skills\swarm-shared
 ```
 
 ## Config
