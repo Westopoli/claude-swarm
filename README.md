@@ -14,7 +14,7 @@ One slash command. Eight phases. A dozen layered gates. One tree-shaped cascade.
 
 | Command | What it does |
 |---|---|
-| `/swarm` | The whole cascade in one command. Drafts spec/contract/umbrella if missing (lite-discovery), decomposes the spec into per-sub-agent briefs, writes a failing test per sub-agent, audits the briefs, spawns sub-agents in parallel, waits for green, runs an aggregate assumption-sweep, then admits each sub-agent through G1–G7 + the umbrella regression check. Reverts via file-backup on regression. No git, no chained commands, no `.UNSTATED.md` ceremony. |
+| `/manager-mode` | The whole cascade in one command. Drafts spec/contract/umbrella if missing (lite-discovery), decomposes the spec into per-sub-agent briefs, writes a failing test per sub-agent, audits the briefs, spawns sub-agents in parallel, waits for green, runs an aggregate assumption-sweep, then admits each sub-agent through G1–G7 + the umbrella regression check. Reverts via file-backup on regression. No git, no chained commands, no `.UNSTATED.md` ceremony. |
 
 ---
 
@@ -67,7 +67,7 @@ Each sub-task is one test file + one impl file. The sub-task is done when its ow
 ### With claude-swarm
 
 ```
-   /swarm  ──►  Phase 0  preflight (config + check which inputs exist)
+   /manager-mode  ──►  Phase 0  preflight (config + check which inputs exist)
                 Phase 1  lite-discovery (drafts spec/contract/umbrella only if missing,
                           with Bible Compliance footer on the spec)
                 Phase 2  decompose: emit briefs + write per-leaf failing tests
@@ -113,14 +113,14 @@ The load-bearing evals are B, E, and G: real time gets lost when those gates get
 
 | Component | What |
 |---|---|
-| `/swarm` | The single command. Drives all eight phases — preflight, lite-discovery, decompose, audit, spawn, sweep, admission loop, report. |
+| `/manager-mode` | The single command. Drives all eight phases — preflight, lite-discovery, decompose, audit, spawn, sweep, admission loop, report. |
 | `check_invariants.py` | Deterministic audit script run at Phase 3. Standalone — runnable in CI without Claude Code. Checks file-overlap, no-design, sizing, and the Spec Link Rule (every test file headers `# spec: <path>::<section>::AC-<N>`). |
 | `playbook.md` | Full theory: why each invariant exists, what failure mode it prevents, prep-step seam discipline, file-mediated coordination patterns. |
-| `brief-template.md` | Canonical leaf-brief shape. `/swarm` Phase 2 emits briefs against this template; Phase 3 audits against it. |
+| `brief-template.md` | Canonical leaf-brief shape. `/manager-mode` Phase 2 emits briefs against this template; Phase 3 audits against it. |
 
 ## How it works
 
-`/swarm` walks through eight phases without you having to invoke anything else:
+`/manager-mode` walks through eight phases without you having to invoke anything else:
 
 1. **Preflight (Phase 0).** Find or bootstrap `.claude-swarm.toml`. List which of {spec, contract, umbrella} already exist on disk.
 2. **Lite-discovery (Phase 1).** Fires only for missing inputs. One-question drafts per artifact — spec, type contract, failing umbrella test. The spec carries a Bible Compliance footer (cites your source-of-truth doc + lists deliberate divergences). No `.UNSTATED.md` ceremony.
@@ -138,8 +138,8 @@ The cascade is a tree: parent at root, leaves at fringe, no edges between leaves
 | Pattern | What | Where it fires |
 |---|---|---|
 | **Sibling-ASSUMPTIONS read** | Leaves read (never write) other leaves' `.ASSUMPTIONS.md` before logging their own. Catches drift at leaf-time instead of admission-time. | Leaf brief boilerplate |
-| **Question ledger** | Leaf publishes `.swarm/questions/leaf-NN-Q<n>.md` instead of inferring silently. Parent answers asynchronously in `.swarm/answers/`. | `/swarm` Phase 6.5 **G3** gate enforces resolution |
-| **Contract proposals** | Leaf publishes `.swarm/proposals/leaf-NN.md` instead of editing parent-owned files. Parent applies + accepts. | `/swarm` Phase 6.5 **G4** gate verifies application |
+| **Question ledger** | Leaf publishes `.swarm/questions/leaf-NN-Q<n>.md` instead of inferring silently. Parent answers asynchronously in `.swarm/answers/`. | `/manager-mode` Phase 6.5 **G3** gate enforces resolution |
+| **Contract proposals** | Leaf publishes `.swarm/proposals/leaf-NN.md` instead of editing parent-owned files. Parent applies + accepts. | `/manager-mode` Phase 6.5 **G4** gate verifies application |
 
 What's intentionally **not** built: direct leaf-to-leaf messaging, shared mutable state, synchronous waits, cross-leaf impl reads from `.swarm/pending/`. Each would re-introduce a failure mode the cascade exists to prevent.
 
@@ -169,7 +169,7 @@ Every safety net is a numbered gate. Each runs at a specific point in the workfl
 
 ## Install
 
-Copies the skills into `~/.claude/skills/`. Restart Claude Code, then invoke `/swarm`.
+Copies the skills into `~/.claude/skills/`. Restart Claude Code, then invoke `/manager-mode`.
 
 **macOS / Linux**
 ```bash

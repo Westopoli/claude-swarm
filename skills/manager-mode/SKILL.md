@@ -1,9 +1,9 @@
 ---
-name: swarm
+name: manager-mode
 description: Single-command parallel-agent TDD cascade. Use when the user wants to build a feature with parallel sub-agents — phrases like "swarm this", "decompose and spawn", "run the cascade", "spawn N agents on this", "build feature X with parallel agents", "set up the wave", "let's parallelize this". Walks through all phases internally (preflight → lite-discovery → decompose → audit → spawn → wait + sweep → admission loop → final report) — no sibling slash commands to chain. Overlord chat writes spec/contract/umbrella (lite drafts if missing) AND per-leaf failing tests; leaves only write impl. File-based, no git. Hard-refuses when decomposition exceeds ~16 leaves; warns >12. Always invoke this when the user wants parallel sub-agent work — not separate commands for spawn / review / post-review (they no longer exist).
 ---
 
-# /swarm — single-command parallel-agent cascade
+# /manager-mode — single-command parallel-agent cascade
 
 One slash command. The overlord (this chat) drives every phase. Sub-agents only write impl against pre-written failing tests.
 

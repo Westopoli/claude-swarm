@@ -1,0 +1,17 @@
+{
+  "eval_id": "L-single-invocation",
+  "run_id": "old_skill",
+  "summary": {"pass_rate": 0.7, "passed": 7, "failed": 3, "total": 10},
+  "expectations": [
+    {"text": "Umbrella test (tests/umbrella.py) ends GREEN after the cascade completes",                                              "passed": true,  "evidence": "Real pytest run on mock-project-with-baseline: 1 passed in 0.01s."},
+    {"text": "Exactly 2 leaf briefs were written to .swarm/briefs/ (leaf-01 and leaf-02 or similar)",                                  "passed": true,  "evidence": ".swarm/briefs/ contains leaf-01.md and leaf-02.md only."},
+    {"text": "Per-leaf failing test files were written by the overlord at the paths declared in each brief",                          "passed": false, "evidence": "Legacy convention: leaves write their own tests (briefs instruct each leaf to write both test_file and impl_file). Test files were authored inside the leaf sub-agent runs, not by the overlord during decomposition."},
+    {"text": "Every overlord-written per-leaf test file begins with '# spec: ...::AC-N' header (Spec Link Rule)",                     "passed": false, "evidence": "Headers exist ('# spec: specs/url_utils.md::AC-1', '# spec: specs/url_utils.md::AC-2') but only have 2 '::' segments; the new Spec Link Rule regex (^#\\s*spec:\\s*\\S+::\\S+::AC-\\d+) requires 3 — section + AC-N. Legacy cascade did not enforce this rule."},
+    {"text": "parse_url impl was admitted (NotImplementedError replaced with real code in src/url_utils/)",                          "passed": true,  "evidence": "src/url_utils/parse_url.py exists; types.py rewired by parent via accepted contract-proposal."},
+    {"text": "is_safe_url impl was admitted",                                                                                         "passed": true,  "evidence": "src/url_utils/is_safe_url.py exists; same wiring."},
+    {"text": ".swarm/post-review-log.md exists and records both leaves",                                                              "passed": true,  "evidence": ".swarm/post-review-log.md present in mock-project-with-baseline/.swarm/."},
+    {"text": ".swarm/wave-NN.SWEEP.md was written by Phase 5 aggregate assumption-sweep",                                             "passed": true,  "evidence": ".swarm/wave-1.SWEEP.md present (legacy /swarm-spawn writes the parent-sweep before /swarm-post-review)."},
+    {"text": "Cascade completed in one invocation — no chain of separate slash commands required by the user (unified skill only). N/A for baseline.", "passed": false, "evidence": "Legacy cascade requires 4 sequential slash commands: /swarm → /swarm-spawn → /swarm-review → /swarm-post-review. Eval sub-agent simulated each in sequence. This assertion is definitionally false for the baseline."},
+    {"text": "Neither leaf wrote outside its impl_files declaration (no edits to tests/umbrella.py, no edits to src/url_utils/types.py contract)", "passed": true, "evidence": "Brief 'do_not_edit' included types.py + umbrella.py; both untouched directly. types.py rewiring done by parent via accepted proposal — same outcome path as unified's conftest workaround."}
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "eval_id": "L-single-invocation",
+  "eval_name": "single-invocation-url-utils",
+  "prompt": "Run the swarm cascade end-to-end on this project. Project state: .claude-swarm.toml + specs/url_utils.md + src/url_utils/types.py (contract with stubs) + tests/umbrella.py (RED) already on disk. Decompose into the 2 leaves the spec describes (parse_url, is_safe_url), implement both via parallel sub-agents, admit them, run final umbrella test and report.",
+  "assertions": [
+    {"id": "umbrella_green",            "text": "Umbrella test (tests/umbrella.py) ends GREEN after the cascade completes"},
+    {"id": "two_leaf_briefs",           "text": "Exactly 2 leaf briefs were written to .swarm/briefs/ (leaf-01 and leaf-02 or similar)"},
+    {"id": "per_leaf_tests_written",    "text": "Per-leaf failing test files were written by the overlord at the paths declared in each brief"},
+    {"id": "spec_link_header",          "text": "Every overlord-written per-leaf test file begins with '# spec: ...::AC-N' header (Spec Link Rule)"},
+    {"id": "parse_url_impl_admitted",   "text": "parse_url impl was admitted (NotImplementedError replaced with real code in src/url_utils/)"},
+    {"id": "is_safe_url_impl_admitted", "text": "is_safe_url impl was admitted"},
+    {"id": "post_review_log_exists",    "text": ".swarm/post-review-log.md exists and records both leaves"},
+    {"id": "wave_sweep_exists",         "text": ".swarm/wave-NN.SWEEP.md was written by Phase 5 aggregate assumption-sweep"},
+    {"id": "single_invocation",         "text": "Cascade completed in one invocation — no chain of separate slash commands required by the user (unified skill only). N/A for baseline."},
+    {"id": "no_parent_owned_touched",   "text": "Neither leaf wrote outside its impl_files declaration (no edits to tests/umbrella.py, no edits to src/url_utils/types.py contract)"}
+  ]
+}

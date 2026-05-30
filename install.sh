@@ -13,18 +13,19 @@ set -euo pipefail
 REPO_URL="https://github.com/Westopoli/claude-swarm"
 RAW_BASE="https://raw.githubusercontent.com/Westopoli/claude-swarm/main"
 SKILLS_DIR="${HOME}/.claude/skills"
-SKILLS=(swarm swarm-shared)
+SKILLS=(manager-mode swarm-shared)
 
 echo "claude-swarm — installing to ${SKILLS_DIR}"
 mkdir -p "${SKILLS_DIR}"
 
-# Clean up absorbed skills from prior installs (pre-collapse cascade).
-# These were folded into the unified /swarm in v2.
-LEGACY=(swarm-spawn swarm-review swarm-post-review swarm-merge)
+# Clean up legacy skill dirs from prior installs.
+# - swarm-spawn / swarm-review / swarm-post-review / swarm-merge: absorbed into the unified cascade in v2.
+# - swarm: renamed to manager-mode in v3.
+LEGACY=(swarm swarm-spawn swarm-review swarm-post-review swarm-merge)
 for legacy in "${LEGACY[@]}"; do
   if [[ -e "${SKILLS_DIR}/${legacy}" ]]; then
     backup="${SKILLS_DIR}/${legacy}.bak.$(date +%Y%m%d%H%M%S)"
-    echo "  ${legacy}: legacy install found (absorbed into /swarm); backing up to $(basename "${backup}")"
+    echo "  ${legacy}: legacy install found (renamed or absorbed into /manager-mode); backing up to $(basename "${backup}")"
     mv "${SKILLS_DIR}/${legacy}" "${backup}"
   fi
 done
@@ -55,4 +56,4 @@ done
 
 echo ""
 echo "Done. Restart Claude Code, then try:"
-echo "  /swarm"
+echo "  /manager-mode"

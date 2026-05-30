@@ -1,8 +1,8 @@
 # TDD Cascade — Playbook
 
-Condensed theory behind the `/swarm` skill's phased cascade. Phase numbers below refer to `/swarm` SKILL.md.
+Condensed theory behind the `/manager-mode` skill's phased cascade. Phase numbers below refer to `/manager-mode` SKILL.md.
 
-This file is the skill's portable summary. If a project ships its own playbook, that one wins on policy questions and `/swarm` should defer to it.
+This file is the skill's portable summary. If a project ships its own playbook, that one wins on policy questions and `/manager-mode` should defer to it.
 
 ---
 
@@ -33,7 +33,7 @@ If the project's playbook adds a gate (e.g., an extra compliance check between s
 
 ## The Three Invariants
 
-These are the structural rules a leaf assignment must satisfy. Every recurring failure mode in parallel-agent TDD work reduces to violating one of them. `/swarm` Phase 3 (the deterministic invariant audit) checks all four (the three classical invariants plus the Spec Link Rule) before any leaf may be spawned.
+These are the structural rules a leaf assignment must satisfy. Every recurring failure mode in parallel-agent TDD work reduces to violating one of them. `/manager-mode` Phase 3 (the deterministic invariant audit) checks all four (the three classical invariants plus the Spec Link Rule) before any leaf may be spawned.
 
 ### 1. File-ownership non-overlap
 
@@ -84,11 +84,11 @@ Receives one assignment: one test file, one impl file, the spec line range it mu
 
 ## Intake interview and the assumption log
 
-`/swarm` Phase 0 locks the scope of the batch *before* any procedure runs, because the most common cascade failure mode traces post-mortem to one of the intake questions being silently inferred by the parent agent instead of stated by the user.
+`/manager-mode` Phase 0 locks the scope of the batch *before* any procedure runs, because the most common cascade failure mode traces post-mortem to one of the intake questions being silently inferred by the parent agent instead of stated by the user.
 
 Leaf agents follow the assumption-log convention: if a leaf had to infer anything during its run, it writes `<briefs_dir>/leaf-NN.ASSUMPTIONS.md`. The brief boilerplate (`brief-template.md`) gives leaves the format.
 
-After all leaves report green (`/swarm` Phase 5), the parent runs the **aggregate assumption-sweep**. The sweep reads every leaf log, classifies entries against the spec, the bible (source-of-truth doc), and the type contract, and surfaces drift with a damage assessment and a patch suggestion. The user makes the call on patch vs. redo. Default bias: patch — redo costs an afternoon, a patch usually costs minutes. The sweep output is written to `.swarm/wave-<wave>.SWEEP.md` and is required (G7) before any admission of the wave begins.
+After all leaves report green (`/manager-mode` Phase 5), the parent runs the **aggregate assumption-sweep**. The sweep reads every leaf log, classifies entries against the spec, the bible (source-of-truth doc), and the type contract, and surfaces drift with a damage assessment and a patch suggestion. The user makes the call on patch vs. redo. Default bias: patch — redo costs an afternoon, a patch usually costs minutes. The sweep output is written to `.swarm/wave-<wave>.SWEEP.md` and is required (G7) before any admission of the wave begins.
 
 The reason this is a written convention rather than a free-form check: an LLM auditing its own inferences in the same turn rarely catches them. A separate sweep, against persisted logs, with explicit categories (contradicts-spec / contradicts-strategy-doc / cross-leaf / fabricated / compounded), forces structured re-examination.
 
@@ -145,7 +145,7 @@ Failure mode prevented: two leaves silently inferring incompatible shapes of the
 
 Leaves publish questions to `.swarm/questions/leaf-NN-Q<n>.md` instead of inferring silently. The parent answers asynchronously at `.swarm/answers/leaf-NN-Q<n>.md`. The leaf proceeds under a best-guess inference if no answer arrives; the inference is recorded with an explicit `unanswered: true` tag.
 
-`/swarm` Phase 6.5 gate **G3** enforces resolution before admission: every published question must either have an answer or be acknowledged as unanswered in ASSUMPTIONS.
+`/manager-mode` Phase 6.5 gate **G3** enforces resolution before admission: every published question must either have an answer or be acknowledged as unanswered in ASSUMPTIONS.
 
 This is forensic, not synchronous. Leaves do not block on questions — they record them and continue under best-guess. The gate converts "silent inference" into "logged inference with explicit parent acknowledgement." If the parent's answer contradicts the leaf's guess, G3 surfaces the contradiction by name.
 
@@ -155,7 +155,7 @@ Failure mode prevented: a leaf needs to know X, brief is ambiguous, leaf infers 
 
 When a leaf needs a parent-owned file changed to satisfy its brief, it writes `.swarm/proposals/leaf-NN.md` instead of editing the file (which G1 would reject) or duplicating the file (which silent drift would absorb). The proposal contains the proposed diff and the reason it is required.
 
-The parent reviews and sets `status: accepted | rejected | superseded`. Accepted proposals require the parent to first apply the diff to the target file; `/swarm` Phase 6.5 gate **G4** verifies the change is actually present, not just marked accepted.
+The parent reviews and sets `status: accepted | rejected | superseded`. Accepted proposals require the parent to first apply the diff to the target file; `/manager-mode` Phase 6.5 gate **G4** verifies the change is actually present, not just marked accepted.
 
 Failure mode prevented: leaf needs a type contract extended. Today the leaf either escalates and stalls the wave or invents a duplicate type. With proposals, the request is visible, the change is applied by the parent (preserving G1), and the gate ensures application before admission.
 
@@ -174,7 +174,7 @@ All three additions are strictly additive: each is a gate that, if turned off, r
 
 Leaves write to `.swarm/pending/leaf-NN/`. The skill copies from staging to real at admission time and only if every gate passes. There is no override that lets a leaf "write to real to save a step" — across session compacts, parallel agents, and audit trails, the staging dir is the only thing that preserves provenance. A workflow that lets leaves write directly to real for any reason re-introduces three failure modes simultaneously: ownership ambiguity (which leaf authored this hunk?), audit-log gaps (post-review-log claims clean while HEAD says otherwise), and bypass of every G1–G6 gate (none of them run on direct writes).
 
-`/swarm` Phase 6.5 gate **G5** (wave-snapshot integrity) is the post-hoc detection for this: if a leaf writes directly to real, the hash of that file at admission time will not match the wave-start snapshot, and G5 blocks the admission of any leaf in the wave. Detection, not prevention — but the gate forces the violation to surface before it propagates.
+`/manager-mode` Phase 6.5 gate **G5** (wave-snapshot integrity) is the post-hoc detection for this: if a leaf writes directly to real, the hash of that file at admission time will not match the wave-start snapshot, and G5 blocks the admission of any leaf in the wave. Detection, not prevention — but the gate forces the violation to surface before it propagates.
 
 ---
 

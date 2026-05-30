@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """claude-swarm — deterministic 3-invariant audit on leaf briefs.
 
-Invoked by /swarm Phase 3. Reads every *.md brief in briefs_dir, parses the YAML
+Invoked by /manager-mode Phase 3. Reads every *.md brief in briefs_dir, parses the YAML
 frontmatter, and validates against the three invariants defined in
 ~/.claude/skills/swarm-shared/references/playbook.md:
 
@@ -333,7 +333,7 @@ def check_spec_link(briefs: list[Brief], root: Path) -> list[Failure]:
     """Every brief-declared test file must start with a `# spec: ...::AC-N` header.
 
     The header anchors the test back to the spec line it encodes. Phase 2 of the
-    /swarm cascade requires the overlord to write tests with this header; this
+    /manager-mode cascade requires the overlord to write tests with this header; this
     check enforces it before any leaf spawns.
     """
     fails: list[Failure] = []

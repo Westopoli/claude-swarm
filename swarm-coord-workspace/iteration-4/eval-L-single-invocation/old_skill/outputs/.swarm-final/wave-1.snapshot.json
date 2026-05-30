@@ -1,0 +1,19 @@
+{
+  "wave": 1,
+  "created_at": "2026-05-29T00:00:00Z",
+  "leaf_owned_paths": [
+    "src/url_utils/parse_url.py",
+    "tests/test_parse_url.py",
+    "src/url_utils/is_safe_url.py",
+    "tests/test_is_safe_url.py"
+  ],
+  "hashes": {
+    "specs/url_utils.md": "sha256-omitted-sandbox-no-exec",
+    "src/url_utils/types.py": "sha256-omitted-sandbox-no-exec",
+    "tests/umbrella.py": "sha256-omitted-sandbox-no-exec",
+    "tests/conftest.py": "sha256-omitted-sandbox-no-exec",
+    "conftest.py": "sha256-omitted-sandbox-no-exec",
+    ".claude-swarm.toml": "sha256-omitted-sandbox-no-exec"
+  },
+  "note": "Snapshot written by parent during /swarm-post-review 0.7. SHA-256 values are placeholders because code execution was unavailable in this eval sandbox; G5 drift check is therefore advisory only this run."
+}

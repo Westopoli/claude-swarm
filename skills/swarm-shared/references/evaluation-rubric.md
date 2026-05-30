@@ -32,27 +32,27 @@ The cascade exists because a single agent attempting a large plan loses resoluti
 
 Future iterations must include at least one eval in **each** of these categories. Stock pass-rate evals on small inputs are allowed but cannot stand alone.
 
-### A. Scale-resolution (`/swarm` Phase 3 audit)
+### A. Scale-resolution (`/manager-mode` Phase 3 audit)
 
 - Brief set size **≥ 15 leaves**, not 3.
 - Faults seeded **subtly and deep**: overlap on a file whose name is one character different from a sibling; strategy-doc drift in a single brief whose `contract_imports` cite a type that doesn't exist in `type_contract_path`; sizing violation in the budgets, not in obvious prose.
 - With_skill must catch all seeded faults. Baseline likely loses ≥1 as N grows.
 
-### B. Solo-implementation prevention (`/swarm` Phase 2)
+### B. Solo-implementation prevention (`/manager-mode` Phase 2)
 
 - Subagent given task **"implement feature X per `specs/X.md`"** — phrased as an implementation request, not as a decomposition request.
 - With_skill (skill auto-triggers on "implement" + presence of spec): produces brief set, does **zero** edits to `src/`.
 - Baseline: likely opens `src/` and starts writing the impl directly.
 - Measure: count of `src/` writes during the run. Pass = 0.
 
-### C. Bible/strategy-doc drift detection (`/swarm` Phase 1 Bible Compliance footer)
+### C. Bible/strategy-doc drift detection (`/manager-mode` Phase 1 Bible Compliance footer)
 
 - `docs/strategy.md` says one thing (e.g., "all aggregation in SQL").
 - `specs/wave-N.md` violates it (e.g., "use Python pandas for the aggregator").
 - With_skill must **report the contradiction with both quotes side-by-side** and halt at spec-gate.
 - Baseline likely produces "spec looks compliant" without quoting either doc — the failure mode this skill exists to prevent.
 
-### D. Cascade-mistake leak-through (`/swarm` Phase 6 admission loop)
+### D. Cascade-mistake leak-through (`/manager-mode` Phase 6 admission loop)
 
 - 5 sequential admission candidates in one prompt, each with DIFF + UMBRELLA_BEFORE + UMBRELLA_AFTER.
 - Candidate 3 introduces a silent regression: umbrella passes drop from prior count. Candidates 1, 2, 4, 5 are clean improvements.
