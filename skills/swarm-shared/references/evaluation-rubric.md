@@ -1,4 +1,4 @@
-# Evaluation rubric for claude-swarm skills
+# Evaluation rubric for claude-manager-mode skills
 
 This file records the **actual success criteria** the user cares about so future iterations don't drift into measuring the wrong things. The skill-creator's stock dashboard (pass-rate / time / tokens) is **not the metric**. It is a sanity check, not a verdict.
 

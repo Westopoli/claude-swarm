@@ -1,4 +1,4 @@
-# claude-swarm — project config
+# claude-manager-mode — project config
 # Place at project root. Delete keys to inherit defaults.
 
 spec_dir          = "specs/"

@@ -1,4 +1,4 @@
-# claude-swarm
+# claude-manager-mode
 
 > Disciplined parallel-agent TDD for Claude Code. One north-star test, many sub-tasks, zero drift.
 
@@ -51,7 +51,7 @@ Each sub-task is one test file + one impl file. The sub-task is done when its ow
 
 ## Before / After
 
-### Without claude-swarm
+### Without claude-manager-mode
 
 ```
 "spawn 5 agents on this"
@@ -64,7 +64,7 @@ Each sub-task is one test file + one impl file. The sub-task is done when its ow
    Agent E ──── "done!"               ← integration test still failing, nobody noticed
 ```
 
-### With claude-swarm
+### With claude-manager-mode
 
 ```
    /manager-mode  ──►  Phase 0  preflight (config + check which inputs exist)
@@ -82,7 +82,7 @@ Each sub-task is one test file + one impl file. The sub-task is done when its ow
 
 ## Benchmarks
 
-Paired evals (one with `claude-swarm`, one without), each targeting a specific failure mode. Graded on **mistake prevention**, not pass-rate, tokens, or wall-clock. Methodology: [skills/swarm-shared/references/evaluation-rubric.md](skills/swarm-shared/references/evaluation-rubric.md).
+Paired evals (one with `claude-manager-mode`, one without), each targeting a specific failure mode. Graded on **mistake prevention**, not pass-rate, tokens, or wall-clock. Methodology: [skills/swarm-shared/references/evaluation-rubric.md](skills/swarm-shared/references/evaluation-rubric.md).
 
 **Core safety suite (A–E):**
 
@@ -173,27 +173,27 @@ Copies the skills into `~/.claude/skills/`. Restart Claude Code, then invoke `/m
 
 **macOS / Linux**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Westopoli/claude-swarm/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Westopoli/claude-manager-mode/main/install.sh | bash
 ```
 
 **Windows (PowerShell)**
 ```powershell
-irm https://raw.githubusercontent.com/Westopoli/claude-swarm/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/Westopoli/claude-manager-mode/main/install.ps1 | iex
 ```
 
 ### Manual install
 
 ```bash
 # macOS / Linux
-git clone https://github.com/Westopoli/claude-swarm
-cd claude-swarm
+git clone https://github.com/Westopoli/claude-manager-mode
+cd claude-manager-mode
 ./install.sh
 ```
 
 ```powershell
 # Windows
-git clone https://github.com/Westopoli/claude-swarm
-cd claude-swarm
+git clone https://github.com/Westopoli/claude-manager-mode
+cd claude-manager-mode
 .\install.ps1
 ```
 
@@ -211,7 +211,7 @@ Remove-Item -Recurse -Force $env:USERPROFILE\.claude\skills\swarm, $env:USERPROF
 
 ## Config
 
-Optional. Drop a `.claude-swarm.toml` at your repo root to point claude-swarm at your test command and project layout:
+Optional. Drop a `.claude-swarm.toml` at your repo root to point claude-manager-mode at your test command and project layout:
 
 ```toml
 spec_dir           = "specs/"
@@ -220,7 +220,7 @@ umbrella_test_cmd  = "pytest tests/umbrella -x"
 type_contract_path = "src/contract.py"
 ```
 
-Without a config file, claude-swarm uses sensible defaults — the only thing you'll *probably* need to set is `umbrella_test_cmd` so it knows how to run your test suite.
+Without a config file, claude-manager-mode uses sensible defaults — the only thing you'll *probably* need to set is `umbrella_test_cmd` so it knows how to run your test suite.
 
 **What you can tune (via `.claude-swarm.toml`, never edit the script):**
 

@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
-# claude-swarm installer
+# claude-manager-mode installer
 # Copies skills into ~/.claude/skills/ so Claude Code picks them up.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/Westopoli/claude-swarm/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/Westopoli/claude-manager-mode/main/install.sh | bash
 #
 # Or, after cloning the repo:
 #   ./install.sh
 
 set -euo pipefail
 
-REPO_URL="https://github.com/Westopoli/claude-swarm"
-RAW_BASE="https://raw.githubusercontent.com/Westopoli/claude-swarm/main"
+REPO_URL="https://github.com/Westopoli/claude-manager-mode"
+RAW_BASE="https://raw.githubusercontent.com/Westopoli/claude-manager-mode/main"
 SKILLS_DIR="${HOME}/.claude/skills"
 SKILLS=(manager-mode swarm-shared)
 
-echo "claude-swarm — installing to ${SKILLS_DIR}"
+echo "claude-manager-mode — installing to ${SKILLS_DIR}"
 mkdir -p "${SKILLS_DIR}"
 
 # Clean up legacy skill dirs from prior installs.

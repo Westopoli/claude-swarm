@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""claude-swarm — deterministic 3-invariant audit on leaf briefs.
+"""claude-manager-mode — deterministic 3-invariant audit on leaf briefs.
 
 Invoked by /manager-mode Phase 3. Reads every *.md brief in briefs_dir, parses the YAML
 frontmatter, and validates against the three invariants defined in
@@ -436,7 +436,7 @@ def render(rpt: Report) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(description="claude-swarm 3-invariant audit")
+    p = argparse.ArgumentParser(description="claude-manager-mode 3-invariant audit")
     p.add_argument("--briefs-dir", type=Path,
         help="path to briefs dir; default from .claude-swarm.toml")
     p.add_argument("--root", type=Path, default=Path.cwd(),

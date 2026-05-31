@@ -1,19 +1,19 @@
-# claude-swarm installer for Windows (PowerShell)
+# claude-manager-mode installer for Windows (PowerShell)
 # Copies skills into ~/.claude/skills/ so Claude Code picks them up.
 #
 # Usage (run from PowerShell):
-#   irm https://raw.githubusercontent.com/Westopoli/claude-swarm/main/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/Westopoli/claude-manager-mode/main/install.ps1 | iex
 #
 # Or, after cloning the repo:
 #   .\install.ps1
 
 $ErrorActionPreference = "Stop"
 
-$REPO_URL = "https://github.com/Westopoli/claude-swarm"
+$REPO_URL = "https://github.com/Westopoli/claude-manager-mode"
 $SKILLS_DIR = Join-Path $env:USERPROFILE ".claude\skills"
 $SKILLS = @("manager-mode", "swarm-shared")
 
-Write-Host "claude-swarm -- installing to $SKILLS_DIR"
+Write-Host "claude-manager-mode -- installing to $SKILLS_DIR"
 New-Item -ItemType Directory -Force -Path $SKILLS_DIR | Out-Null
 
 # Clean up legacy skill dirs from prior installs.
@@ -42,7 +42,7 @@ if ($SCRIPT_DIR -and (Test-Path (Join-Path $SCRIPT_DIR "skills"))) {
     $SRC = Join-Path $SCRIPT_DIR "skills"
     Write-Host "  source: local checkout ($SRC)"
 } else {
-    $TMP = Join-Path $env:TEMP "claude-swarm-install-$([System.IO.Path]::GetRandomFileName())"
+    $TMP = Join-Path $env:TEMP "claude-manager-mode-install-$([System.IO.Path]::GetRandomFileName())"
     Write-Host "  source: cloning $REPO_URL to temp dir"
     git clone --depth 1 $REPO_URL $TMP 2>$null
     $SRC = Join-Path $TMP "skills"

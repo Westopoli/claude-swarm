@@ -1,4 +1,4 @@
-# claude-swarm config
+# claude-manager-mode config
 
 Each project that uses the cascade places a `.claude-swarm.toml` at its project root. `/manager-mode` reads it at Phase 0 preflight. Missing file is fine — defaults apply.
 
